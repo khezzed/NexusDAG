@@ -1,0 +1,9 @@
+{
+  "attestation_id": "RES-NEXUS-2026-02",
+  "subject": "Reserve Attestation",
+  "issued_at": "2026-10-18T12:00:00Z",
+  "target_protocol": "nexus-core",
+  "attestation_status": "CONFIRMED",
+  "coverage_ratio_percent": 140,
+  "verdict": "Total verifiable reserves exceed 120% of on-chain obligations."
+}

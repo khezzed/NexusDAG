@@ -1,0 +1,8 @@
+{
+  "advisory_id": "CVE-2026-NEXUS-RETRACT-01",
+  "subject": "Smart Contract Security Audit",
+  "issued_at": "2026-10-19T08:00:00Z",
+  "target_protocol": "nexus-core",
+  "advisory_status": "REVOKED",
+  "revocation": "Notice of immediate revocation: Critical reentrancy flaw discovered; prior audit certification is retracted."
+}
