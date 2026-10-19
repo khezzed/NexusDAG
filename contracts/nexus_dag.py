@@ -354,7 +354,7 @@ def _fetch_and_evaluate_evidence_nondet_fn(
         prompt_task = (
             f"You are evaluating RETRACTION / REVOCATION evidence for DAG Node '{node_id}'.\n"
             f"Required Subject/Scope: '{required_subject}'.\n"
-            f"Determine if the evidence confirms that the previous certification/assertion is formally revoked, retracted, or compromised.\n"
+            f"Determine if the evidence confirms that the previous certification/assertion is formally revoked, retracted, compromised, or contradicted.\n"
         )
 
     judge_prompt = f"""{prompt_task}
@@ -418,12 +418,18 @@ Return ONLY a valid JSON object matching this exact schema:
 
     norm_citation = _normalize_whitespace_fn(citation)
 
-    if predicate == PREDICATE_HOLDS:
-        code = STATUS_OK_RETRACTION_VERIFIED if is_retraction else STATUS_OK_VERIFIED
-    elif predicate == PREDICATE_CONTRADICTED:
-        code = STATUS_EVIDENCE_CONTRADICTED
+    if is_retraction:
+        if predicate in (PREDICATE_HOLDS, PREDICATE_CONTRADICTED):
+            code = STATUS_OK_RETRACTION_VERIFIED
+        else:
+            code = STATUS_LLM_MALFORMED
     else:
-        code = STATUS_LLM_MALFORMED
+        if predicate == PREDICATE_HOLDS:
+            code = STATUS_OK_VERIFIED
+        elif predicate == PREDICATE_CONTRADICTED:
+            code = STATUS_EVIDENCE_CONTRADICTED
+        else:
+            code = STATUS_LLM_MALFORMED
 
     return _build_envelope_dict_fn(
         node_id=node_id,
@@ -806,7 +812,7 @@ class NexusDag(gl.Contract):
             adjudicated_at=u256(int(agreed_env["adjudicated_at"])),
         )
 
-        if agreed_env["predicate"] != PREDICATE_HOLDS:
+        if agreed_env["predicate"] not in (PREDICATE_HOLDS, PREDICATE_CONTRADICTED):
             # Retraction evidence failed to substantiate revocation -> state unchanged
             self.nodes[norm_id] = target_node
             return agreed_env

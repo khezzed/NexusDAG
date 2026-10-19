@@ -1,0 +1,740 @@
+{
+  "project": "NexusDAG \u2014 Evidence-Grounded Dependency Propagation & Retraction Graph Primitive",
+  "generated_at_utc": "2026-10-19T14:29:19.491291+00:00",
+  "network": {
+    "name": "studionet",
+    "rpc_endpoint": "https://studio.genlayer.com/api",
+    "explorer_base_url": "https://explorer-studio.genlayer.com"
+  },
+  "source_verification": {
+    "repository_url": "https://github.com/khezzed/aegis-sla-escrow",
+    "contract_path": "contracts/nexus_dag.py",
+    "deployed_commit_sha": "2bf583a5e289e5f725711f21b06aa6f1cd8267b0",
+    "git_blob_sha1": "e62d2a1dcc36105d050d9d8940e45f48c766c4e6",
+    "byte_length": 35452,
+    "line_endings": "LF",
+    "runner_header": "# { \"Depends\": \"py-genlayer:1jb45aa8ynh2a9c9xn3b7qqh8sm5q93hwfp7jqmwsfhh8jpz09h6\" }"
+  },
+  "toolchain": {
+    "python_version": "3.14.6",
+    "genlayer_py": "0.22.1",
+    "genvm_linter": "0.3.2",
+    "genlayer_test": "0.29.2"
+  },
+  "evidence_fixtures": [
+    {
+      "id": "leaf_a_audit",
+      "url": "https://raw.githubusercontent.com/khezzed/aegis-sla-escrow/b4f9fa8c876b39a8a0f164376ae840e87f8f64fa/fixtures/nexus/audit_clean_leaf_a.json",
+      "http_status": 200
+    },
+    {
+      "id": "retract_a_cve",
+      "url": "https://raw.githubusercontent.com/khezzed/aegis-sla-escrow/b4f9fa8c876b39a8a0f164376ae840e87f8f64fa/fixtures/nexus/audit_cve_retraction_a.json",
+      "http_status": 200
+    },
+    {
+      "id": "leaf_d_reserves",
+      "url": "https://raw.githubusercontent.com/khezzed/aegis-sla-escrow/b4f9fa8c876b39a8a0f164376ae840e87f8f64fa/fixtures/nexus/reserves_clean_leaf_d.json",
+      "http_status": 200
+    }
+  ],
+  "deployment": {
+    "contract_address": "0x70dD62d9A2491B8fb66d9616C24A64c707C4B422",
+    "explorer_contract_url": "https://explorer-studio.genlayer.com/address/0x70dD62d9A2491B8fb66d9616C24A64c707C4B422",
+    "admin_address": "0xb518fA3f9f71965edAacF196A98db516297C0552",
+    "operator_address": "0xe43822Cf1ac73cD794f3444A5dD35e634E3dd19c",
+    "stranger_address": "0x704D3904a6298289540975776a92c512813EC431",
+    "constructor_args": [
+      [
+        "raw.githubusercontent.com"
+      ]
+    ]
+  },
+  "transactions": [
+    {
+      "label": "deploy_contract",
+      "tx_hash": "0x767e0d22bf3766a1996b442546207f333201f2d8e13f94d21d957740dba12875",
+      "explorer_url": "https://explorer-studio.genlayer.com/transactions/0x767e0d22bf3766a1996b442546207f333201f2d8e13f94d21d957740dba12875",
+      "expected_failure": false,
+      "status_name": "FINALIZED",
+      "leader_execution_result": "SUCCESS",
+      "leader_error": null,
+      "votes": {
+        "0x1242E9f5bf9b253327f130E8802b7b2F438A21Ef": "agree",
+        "0x6a4179A851B3747A458baD2f089AB2EeFE0eBbAb": "idle",
+        "0x892C437da9b9CA0b6017B6f046F58E3526B46ec6": "idle",
+        "0xa21bc502E3578E4b3039be8c59a257198f7c3f19": "agree",
+        "0xf1C7551292319EE334e2D8A24eAC108Bd4C63b21": "agree"
+      },
+      "accepted_status_observed": "ACCEPTED",
+      "read_backs": {
+        "get_accounting_state": {
+          "node_count": 0,
+          "total_allocated_wei": 0,
+          "total_inbound_wei": 0,
+          "total_outbound_wei": 0,
+          "total_paid_wei": 0,
+          "total_quarantined_wei": 0,
+          "total_treasury_wei": 0
+        }
+      }
+    },
+    {
+      "label": "deposit_treasury (500 wei)",
+      "tx_hash": "0xdb034b10eb340b8ed709e4dd5bf86b96c20a381fef2011727f6c57506261400e",
+      "explorer_url": "https://explorer-studio.genlayer.com/transactions/0xdb034b10eb340b8ed709e4dd5bf86b96c20a381fef2011727f6c57506261400e",
+      "expected_failure": false,
+      "status_name": "FINALIZED",
+      "leader_execution_result": "SUCCESS",
+      "leader_error": null,
+      "votes": {
+        "0x1dEcE6A694520b1d3a2e24b9f28500858C756BDb": "idle",
+        "0x2FcBC452425f2F1e102c5c04b4331fcB46ee1c00": "agree",
+        "0x7bf4Ea55363bbe73A4dd5b3900bf03c978A63b6e": "idle",
+        "0xb0925568bFbCF00aADBcA053E6D0E1628ff3d530": "agree",
+        "0xf1C7551292319EE334e2D8A24eAC108Bd4C63b21": "agree"
+      },
+      "accepted_status_observed": "ACCEPTED",
+      "read_backs": {
+        "get_accounting_state": {
+          "node_count": 0,
+          "total_allocated_wei": 0,
+          "total_inbound_wei": 500,
+          "total_outbound_wei": 0,
+          "total_paid_wei": 0,
+          "total_quarantined_wei": 0,
+          "total_treasury_wei": 500
+        }
+      }
+    },
+    {
+      "label": "register_node (NODE-A, Evidence Leaf)",
+      "tx_hash": "0xa00fd9c6f4d5afb6fd267f6f0f6ae3016c2e23c3bafc3f25b83b03c6ea2c87e4",
+      "explorer_url": "https://explorer-studio.genlayer.com/transactions/0xa00fd9c6f4d5afb6fd267f6f0f6ae3016c2e23c3bafc3f25b83b03c6ea2c87e4",
+      "expected_failure": false,
+      "status_name": "FINALIZED",
+      "leader_execution_result": "SUCCESS",
+      "leader_error": null,
+      "votes": {
+        "0x0B50B270Eba5D9B780272C4Cf4720260177e761D": "idle",
+        "0x7bf4Ea55363bbe73A4dd5b3900bf03c978A63b6e": "idle",
+        "0x8Ce1805d6970d54748dE7160b5b395dCC5c71F44": "agree",
+        "0x9244De5F20cB75A0c51d79A9A3208D00a99aFc10": "agree",
+        "0xf1C7551292319EE334e2D8A24eAC108Bd4C63b21": "agree"
+      },
+      "accepted_status_observed": "ACCEPTED",
+      "read_backs": {
+        "get_node(NODE-A)": {
+          "activated_at": 0,
+          "allocated_wei": 0,
+          "created_at": 0,
+          "creator": "0xb518fA3f9f71965edAacF196A98db516297C0552",
+          "dependencies": [],
+          "envelope_citation": "",
+          "envelope_predicate": "UNCLEAR",
+          "envelope_status_code": "PENDING",
+          "evidence_url": "https://raw.githubusercontent.com/khezzed/aegis-sla-escrow/b4f9fa8c876b39a8a0f164376ae840e87f8f64fa/fixtures/nexus/audit_clean_leaf_a.json",
+          "node_id": "NODE-A",
+          "node_type": 1,
+          "recipient": "0xb518fA3f9f71965edAacF196A98db516297C0552",
+          "required_subject": "Smart Contract Security Audit",
+          "retracted_at": 0,
+          "retraction_predicate": "UNCLEAR",
+          "retraction_status_code": "PENDING",
+          "status": 0
+        }
+      }
+    },
+    {
+      "label": "register_node (NODE-B, Derived depends on A)",
+      "tx_hash": "0xdd8e27dfed43cd85367d9bcc800dab0de8f185cc7e6bacade69a262bd7a9a47a",
+      "explorer_url": "https://explorer-studio.genlayer.com/transactions/0xdd8e27dfed43cd85367d9bcc800dab0de8f185cc7e6bacade69a262bd7a9a47a",
+      "expected_failure": false,
+      "status_name": "FINALIZED",
+      "leader_execution_result": "SUCCESS",
+      "leader_error": null,
+      "votes": {
+        "0x40533175AfBbAee2c030F88259Afb5aEDbCF0E05": "idle",
+        "0x9244De5F20cB75A0c51d79A9A3208D00a99aFc10": "idle",
+        "0xad7d13f269CeAd4379E64a1A3a0803a827e70B43": "agree",
+        "0xb0925568bFbCF00aADBcA053E6D0E1628ff3d530": "agree",
+        "0xf1C7551292319EE334e2D8A24eAC108Bd4C63b21": "agree"
+      },
+      "accepted_status_observed": "ACCEPTED",
+      "read_backs": {
+        "get_node(NODE-B)": {
+          "activated_at": 0,
+          "allocated_wei": 0,
+          "created_at": 0,
+          "creator": "0xb518fA3f9f71965edAacF196A98db516297C0552",
+          "dependencies": [
+            "NODE-A"
+          ],
+          "envelope_citation": "",
+          "envelope_predicate": "UNCLEAR",
+          "envelope_status_code": "PENDING",
+          "evidence_url": "",
+          "node_id": "NODE-B",
+          "node_type": 2,
+          "recipient": "0xb518fA3f9f71965edAacF196A98db516297C0552",
+          "required_subject": "",
+          "retracted_at": 0,
+          "retraction_predicate": "UNCLEAR",
+          "retraction_status_code": "PENDING",
+          "status": 0
+        }
+      }
+    },
+    {
+      "label": "register_node (NODE-C, Settlement depends on B, 100 wei)",
+      "tx_hash": "0x3dd4d310944f772d63d352cf9f4c71e62534c7c582beab754500e5d303f69825",
+      "explorer_url": "https://explorer-studio.genlayer.com/transactions/0x3dd4d310944f772d63d352cf9f4c71e62534c7c582beab754500e5d303f69825",
+      "expected_failure": false,
+      "status_name": "FINALIZED",
+      "leader_execution_result": "SUCCESS",
+      "leader_error": null,
+      "votes": {
+        "0x8Ce1805d6970d54748dE7160b5b395dCC5c71F44": "agree",
+        "0x9244De5F20cB75A0c51d79A9A3208D00a99aFc10": "agree",
+        "0xA712cB25a4002666FA9D09477251f238dD9e06b3": "agree",
+        "0xad7d13f269CeAd4379E64a1A3a0803a827e70B43": "agree",
+        "0xb0925568bFbCF00aADBcA053E6D0E1628ff3d530": "idle"
+      },
+      "accepted_status_observed": "FINALIZED",
+      "read_backs": {
+        "get_node(NODE-C)": {
+          "activated_at": 0,
+          "allocated_wei": 100,
+          "created_at": 0,
+          "creator": "0xb518fA3f9f71965edAacF196A98db516297C0552",
+          "dependencies": [
+            "NODE-B"
+          ],
+          "envelope_citation": "",
+          "envelope_predicate": "UNCLEAR",
+          "envelope_status_code": "PENDING",
+          "evidence_url": "",
+          "node_id": "NODE-C",
+          "node_type": 2,
+          "recipient": "0xe43822Cf1ac73cD794f3444A5dD35e634E3dd19c",
+          "required_subject": "",
+          "retracted_at": 0,
+          "retraction_predicate": "UNCLEAR",
+          "retraction_status_code": "PENDING",
+          "status": 0
+        },
+        "get_accounting_state": {
+          "node_count": 3,
+          "total_allocated_wei": 100,
+          "total_inbound_wei": 500,
+          "total_outbound_wei": 0,
+          "total_paid_wei": 0,
+          "total_quarantined_wei": 0,
+          "total_treasury_wei": 400
+        }
+      }
+    },
+    {
+      "label": "register_node (NODE-D, Independent Leaf)",
+      "tx_hash": "0x92231850853a2cf912f91812864779db733cbffdcc44e7e6b15e2172ad0544e0",
+      "explorer_url": "https://explorer-studio.genlayer.com/transactions/0x92231850853a2cf912f91812864779db733cbffdcc44e7e6b15e2172ad0544e0",
+      "expected_failure": false,
+      "status_name": "FINALIZED",
+      "leader_execution_result": "SUCCESS",
+      "leader_error": null,
+      "votes": {
+        "0x1242E9f5bf9b253327f130E8802b7b2F438A21Ef": "agree",
+        "0x6a4179A851B3747A458baD2f089AB2EeFE0eBbAb": "agree",
+        "0x9244De5F20cB75A0c51d79A9A3208D00a99aFc10": "agree",
+        "0xad7d13f269CeAd4379E64a1A3a0803a827e70B43": "idle",
+        "0xb0925568bFbCF00aADBcA053E6D0E1628ff3d530": "idle"
+      },
+      "accepted_status_observed": "ACCEPTED",
+      "read_backs": {
+        "get_node(NODE-D)": {
+          "activated_at": 0,
+          "allocated_wei": 0,
+          "created_at": 0,
+          "creator": "0xb518fA3f9f71965edAacF196A98db516297C0552",
+          "dependencies": [],
+          "envelope_citation": "",
+          "envelope_predicate": "UNCLEAR",
+          "envelope_status_code": "PENDING",
+          "evidence_url": "https://raw.githubusercontent.com/khezzed/aegis-sla-escrow/b4f9fa8c876b39a8a0f164376ae840e87f8f64fa/fixtures/nexus/reserves_clean_leaf_d.json",
+          "node_id": "NODE-D",
+          "node_type": 1,
+          "recipient": "0xb518fA3f9f71965edAacF196A98db516297C0552",
+          "required_subject": "Reserve Attestation",
+          "retracted_at": 0,
+          "retraction_predicate": "UNCLEAR",
+          "retraction_status_code": "PENDING",
+          "status": 0
+        }
+      }
+    },
+    {
+      "label": "register_node (NODE-E, Independent Settlement, 50 wei)",
+      "tx_hash": "0x8aadf4e5cc30d437c48e63fddfa348368ae51b8444c9ec62b2fd5e49fdfc4fb2",
+      "explorer_url": "https://explorer-studio.genlayer.com/transactions/0x8aadf4e5cc30d437c48e63fddfa348368ae51b8444c9ec62b2fd5e49fdfc4fb2",
+      "expected_failure": false,
+      "status_name": "FINALIZED",
+      "leader_execution_result": "SUCCESS",
+      "leader_error": null,
+      "votes": {
+        "0x17ac0CaefB18205c737e64ee582c9245A28ca1f9": "idle",
+        "0x40533175AfBbAee2c030F88259Afb5aEDbCF0E05": "idle",
+        "0x5Bbbd7cdD63c0ba7f088038Cb049bDDAbE4F6fd1": "agree",
+        "0x7bf4Ea55363bbe73A4dd5b3900bf03c978A63b6e": "agree",
+        "0xf1C7551292319EE334e2D8A24eAC108Bd4C63b21": "agree"
+      },
+      "accepted_status_observed": "ACCEPTED",
+      "read_backs": {
+        "get_node(NODE-E)": {
+          "activated_at": 0,
+          "allocated_wei": 50,
+          "created_at": 0,
+          "creator": "0xb518fA3f9f71965edAacF196A98db516297C0552",
+          "dependencies": [
+            "NODE-D"
+          ],
+          "envelope_citation": "",
+          "envelope_predicate": "UNCLEAR",
+          "envelope_status_code": "PENDING",
+          "evidence_url": "",
+          "node_id": "NODE-E",
+          "node_type": 2,
+          "recipient": "0xe43822Cf1ac73cD794f3444A5dD35e634E3dd19c",
+          "required_subject": "",
+          "retracted_at": 0,
+          "retraction_predicate": "UNCLEAR",
+          "retraction_status_code": "PENDING",
+          "status": 0
+        },
+        "get_accounting_state": {
+          "node_count": 5,
+          "total_allocated_wei": 150,
+          "total_inbound_wei": 500,
+          "total_outbound_wei": 0,
+          "total_paid_wei": 0,
+          "total_quarantined_wei": 0,
+          "total_treasury_wei": 350
+        }
+      }
+    },
+    {
+      "label": "evaluate_node (NODE-A, GenVM consensus -> HOLDS)",
+      "tx_hash": "0x9897b1a96008ecf7844d3f212fb0c0f0f77ddb3a7ccd0fb137001e29fdf18b29",
+      "explorer_url": "https://explorer-studio.genlayer.com/transactions/0x9897b1a96008ecf7844d3f212fb0c0f0f77ddb3a7ccd0fb137001e29fdf18b29",
+      "expected_failure": false,
+      "status_name": "FINALIZED",
+      "leader_execution_result": "SUCCESS",
+      "leader_error": null,
+      "votes": {
+        "0x40533175AfBbAee2c030F88259Afb5aEDbCF0E05": "agree",
+        "0x7bf4Ea55363bbe73A4dd5b3900bf03c978A63b6e": "disagree",
+        "0x8Ce1805d6970d54748dE7160b5b395dCC5c71F44": "agree",
+        "0xa21bc502E3578E4b3039be8c59a257198f7c3f19": "agree",
+        "0xb0925568bFbCF00aADBcA053E6D0E1628ff3d530": "disagree"
+      },
+      "accepted_status_observed": "ACCEPTED",
+      "read_backs": {
+        "get_node(NODE-A)": {
+          "activated_at": 0,
+          "allocated_wei": 0,
+          "created_at": 0,
+          "creator": "0xb518fA3f9f71965edAacF196A98db516297C0552",
+          "dependencies": [],
+          "envelope_citation": "Audited smart contracts show zero critical vulnerabilities and pass all invariants.",
+          "envelope_predicate": "HOLDS",
+          "envelope_status_code": "OK:EVIDENCE_VERIFIED",
+          "evidence_url": "https://raw.githubusercontent.com/khezzed/aegis-sla-escrow/b4f9fa8c876b39a8a0f164376ae840e87f8f64fa/fixtures/nexus/audit_clean_leaf_a.json",
+          "node_id": "NODE-A",
+          "node_type": 1,
+          "recipient": "0xb518fA3f9f71965edAacF196A98db516297C0552",
+          "required_subject": "Smart Contract Security Audit",
+          "retracted_at": 0,
+          "retraction_predicate": "UNCLEAR",
+          "retraction_status_code": "PENDING",
+          "status": 1
+        }
+      }
+    },
+    {
+      "label": "evaluate_node (NODE-B, Derived activation)",
+      "tx_hash": "0x3e39d3e2fcea538b8755c0d371950249c50746130aae7594a9f5fcc0984b7979",
+      "explorer_url": "https://explorer-studio.genlayer.com/transactions/0x3e39d3e2fcea538b8755c0d371950249c50746130aae7594a9f5fcc0984b7979",
+      "expected_failure": false,
+      "status_name": "FINALIZED",
+      "leader_execution_result": "SUCCESS",
+      "leader_error": null,
+      "votes": {
+        "0x1242E9f5bf9b253327f130E8802b7b2F438A21Ef": "idle",
+        "0x40533175AfBbAee2c030F88259Afb5aEDbCF0E05": "agree",
+        "0x8Ce1805d6970d54748dE7160b5b395dCC5c71F44": "idle",
+        "0x9244De5F20cB75A0c51d79A9A3208D00a99aFc10": "agree",
+        "0xb0925568bFbCF00aADBcA053E6D0E1628ff3d530": "agree"
+      },
+      "accepted_status_observed": "ACCEPTED",
+      "read_backs": {
+        "get_node(NODE-B)": {
+          "activated_at": 0,
+          "allocated_wei": 0,
+          "created_at": 0,
+          "creator": "0xb518fA3f9f71965edAacF196A98db516297C0552",
+          "dependencies": [
+            "NODE-A"
+          ],
+          "envelope_citation": "",
+          "envelope_predicate": "UNCLEAR",
+          "envelope_status_code": "PENDING",
+          "evidence_url": "",
+          "node_id": "NODE-B",
+          "node_type": 2,
+          "recipient": "0xb518fA3f9f71965edAacF196A98db516297C0552",
+          "required_subject": "",
+          "retracted_at": 0,
+          "retraction_predicate": "UNCLEAR",
+          "retraction_status_code": "PENDING",
+          "status": 1
+        }
+      }
+    },
+    {
+      "label": "evaluate_node (NODE-C, Derived activation)",
+      "tx_hash": "0x098514611fb6a0d6f32ace7cb55b05713a77bee25db26d7a379f04f8f2918bde",
+      "explorer_url": "https://explorer-studio.genlayer.com/transactions/0x098514611fb6a0d6f32ace7cb55b05713a77bee25db26d7a379f04f8f2918bde",
+      "expected_failure": false,
+      "status_name": "FINALIZED",
+      "leader_execution_result": "SUCCESS",
+      "leader_error": null,
+      "votes": {
+        "0x1242E9f5bf9b253327f130E8802b7b2F438A21Ef": "idle",
+        "0x6a4179A851B3747A458baD2f089AB2EeFE0eBbAb": "idle",
+        "0x7bf4Ea55363bbe73A4dd5b3900bf03c978A63b6e": "agree",
+        "0x8a876C3F3a4783Bd123982bcBF3c672dc0239004": "agree",
+        "0xf29b6947ed298d139FC2655DB15D868C9AbB3091": "agree"
+      },
+      "accepted_status_observed": "ACCEPTED",
+      "read_backs": {
+        "get_node(NODE-C)": {
+          "activated_at": 0,
+          "allocated_wei": 100,
+          "created_at": 0,
+          "creator": "0xb518fA3f9f71965edAacF196A98db516297C0552",
+          "dependencies": [
+            "NODE-B"
+          ],
+          "envelope_citation": "",
+          "envelope_predicate": "UNCLEAR",
+          "envelope_status_code": "PENDING",
+          "evidence_url": "",
+          "node_id": "NODE-C",
+          "node_type": 2,
+          "recipient": "0xe43822Cf1ac73cD794f3444A5dD35e634E3dd19c",
+          "required_subject": "",
+          "retracted_at": 0,
+          "retraction_predicate": "UNCLEAR",
+          "retraction_status_code": "PENDING",
+          "status": 1
+        },
+        "is_node_executable(NODE-C)": true
+      }
+    },
+    {
+      "label": "evaluate_node (NODE-D, GenVM consensus -> HOLDS)",
+      "tx_hash": "0x42f718c050a933d97745594afe84cef4aeaaf657e8e98e1f3b0f787f036ee608",
+      "explorer_url": "https://explorer-studio.genlayer.com/transactions/0x42f718c050a933d97745594afe84cef4aeaaf657e8e98e1f3b0f787f036ee608",
+      "expected_failure": false,
+      "status_name": "FINALIZED",
+      "leader_execution_result": "SUCCESS",
+      "leader_error": null,
+      "votes": {
+        "0x1242E9f5bf9b253327f130E8802b7b2F438A21Ef": "agree",
+        "0x1dEcE6A694520b1d3a2e24b9f28500858C756BDb": "agree",
+        "0x6a4179A851B3747A458baD2f089AB2EeFE0eBbAb": "idle",
+        "0xb0925568bFbCF00aADBcA053E6D0E1628ff3d530": "agree",
+        "0xf1C7551292319EE334e2D8A24eAC108Bd4C63b21": "disagree"
+      },
+      "accepted_status_observed": "ACCEPTED",
+      "read_backs": {
+        "get_node(NODE-D)": {
+          "activated_at": 0,
+          "allocated_wei": 0,
+          "created_at": 0,
+          "creator": "0xb518fA3f9f71965edAacF196A98db516297C0552",
+          "dependencies": [],
+          "envelope_citation": "\"attestation_status\": \"CONFIRMED\"",
+          "envelope_predicate": "HOLDS",
+          "envelope_status_code": "OK:EVIDENCE_VERIFIED",
+          "evidence_url": "https://raw.githubusercontent.com/khezzed/aegis-sla-escrow/b4f9fa8c876b39a8a0f164376ae840e87f8f64fa/fixtures/nexus/reserves_clean_leaf_d.json",
+          "node_id": "NODE-D",
+          "node_type": 1,
+          "recipient": "0xb518fA3f9f71965edAacF196A98db516297C0552",
+          "required_subject": "Reserve Attestation",
+          "retracted_at": 0,
+          "retraction_predicate": "UNCLEAR",
+          "retraction_status_code": "PENDING",
+          "status": 1
+        }
+      }
+    },
+    {
+      "label": "evaluate_node (NODE-E, Derived activation)",
+      "tx_hash": "0x2391dbb85552cac366018db6a2ebf6500cd0ec7ce061027b44ecfba3d8087c0a",
+      "explorer_url": "https://explorer-studio.genlayer.com/transactions/0x2391dbb85552cac366018db6a2ebf6500cd0ec7ce061027b44ecfba3d8087c0a",
+      "expected_failure": false,
+      "status_name": "FINALIZED",
+      "leader_execution_result": "SUCCESS",
+      "leader_error": null,
+      "votes": {
+        "0x0B50B270Eba5D9B780272C4Cf4720260177e761D": "agree",
+        "0x2FcBC452425f2F1e102c5c04b4331fcB46ee1c00": "agree",
+        "0x40533175AfBbAee2c030F88259Afb5aEDbCF0E05": "idle",
+        "0xb0925568bFbCF00aADBcA053E6D0E1628ff3d530": "agree",
+        "0xe7eEe8a1c1690b0322d795B80A76ab2Cd1a0eAFd": "idle"
+      },
+      "accepted_status_observed": "ACCEPTED",
+      "read_backs": {
+        "get_node(NODE-E)": {
+          "activated_at": 0,
+          "allocated_wei": 50,
+          "created_at": 0,
+          "creator": "0xb518fA3f9f71965edAacF196A98db516297C0552",
+          "dependencies": [
+            "NODE-D"
+          ],
+          "envelope_citation": "",
+          "envelope_predicate": "UNCLEAR",
+          "envelope_status_code": "PENDING",
+          "evidence_url": "",
+          "node_id": "NODE-E",
+          "node_type": 2,
+          "recipient": "0xe43822Cf1ac73cD794f3444A5dD35e634E3dd19c",
+          "required_subject": "",
+          "retracted_at": 0,
+          "retraction_predicate": "UNCLEAR",
+          "retraction_status_code": "PENDING",
+          "status": 1
+        },
+        "is_node_executable(NODE-E)": true
+      }
+    },
+    {
+      "label": "retract_node (NODE-A, Verified CVE advisory -> CASCADE BLOCK B & C)",
+      "tx_hash": "0x5c8ab7c524603838b43d8ceecf18603cbc803d1a4871b4105ef058b387846d69",
+      "explorer_url": "https://explorer-studio.genlayer.com/transactions/0x5c8ab7c524603838b43d8ceecf18603cbc803d1a4871b4105ef058b387846d69",
+      "expected_failure": false,
+      "status_name": "FINALIZED",
+      "leader_execution_result": "SUCCESS",
+      "leader_error": null,
+      "votes": {
+        "0x40533175AfBbAee2c030F88259Afb5aEDbCF0E05": "agree",
+        "0x7bf4Ea55363bbe73A4dd5b3900bf03c978A63b6e": "disagree",
+        "0x8a876C3F3a4783Bd123982bcBF3c672dc0239004": "agree",
+        "0xA712cB25a4002666FA9D09477251f238dD9e06b3": "agree",
+        "0xe7eEe8a1c1690b0322d795B80A76ab2Cd1a0eAFd": "idle"
+      },
+      "accepted_status_observed": "ACCEPTED",
+      "read_backs": {
+        "get_node(NODE-A)": {
+          "activated_at": 0,
+          "allocated_wei": 0,
+          "created_at": 0,
+          "creator": "0xb518fA3f9f71965edAacF196A98db516297C0552",
+          "dependencies": [],
+          "envelope_citation": "Audited smart contracts show zero critical vulnerabilities and pass all invariants.",
+          "envelope_predicate": "HOLDS",
+          "envelope_status_code": "OK:EVIDENCE_VERIFIED",
+          "evidence_url": "https://raw.githubusercontent.com/khezzed/aegis-sla-escrow/b4f9fa8c876b39a8a0f164376ae840e87f8f64fa/fixtures/nexus/audit_clean_leaf_a.json",
+          "node_id": "NODE-A",
+          "node_type": 1,
+          "recipient": "0xb518fA3f9f71965edAacF196A98db516297C0552",
+          "required_subject": "Smart Contract Security Audit",
+          "retracted_at": 0,
+          "retraction_predicate": "CONTRADICTED",
+          "retraction_status_code": "OK:RETRACTION_VERIFIED",
+          "status": 2
+        },
+        "get_node(NODE-B)": {
+          "activated_at": 0,
+          "allocated_wei": 0,
+          "created_at": 0,
+          "creator": "0xb518fA3f9f71965edAacF196A98db516297C0552",
+          "dependencies": [
+            "NODE-A"
+          ],
+          "envelope_citation": "",
+          "envelope_predicate": "UNCLEAR",
+          "envelope_status_code": "PENDING",
+          "evidence_url": "",
+          "node_id": "NODE-B",
+          "node_type": 2,
+          "recipient": "0xb518fA3f9f71965edAacF196A98db516297C0552",
+          "required_subject": "",
+          "retracted_at": 0,
+          "retraction_predicate": "UNCLEAR",
+          "retraction_status_code": "PENDING",
+          "status": 3
+        },
+        "get_node(NODE-C)": {
+          "activated_at": 0,
+          "allocated_wei": 100,
+          "created_at": 0,
+          "creator": "0xb518fA3f9f71965edAacF196A98db516297C0552",
+          "dependencies": [
+            "NODE-B"
+          ],
+          "envelope_citation": "",
+          "envelope_predicate": "UNCLEAR",
+          "envelope_status_code": "PENDING",
+          "evidence_url": "",
+          "node_id": "NODE-C",
+          "node_type": 2,
+          "recipient": "0xe43822Cf1ac73cD794f3444A5dD35e634E3dd19c",
+          "required_subject": "",
+          "retracted_at": 0,
+          "retraction_predicate": "UNCLEAR",
+          "retraction_status_code": "PENDING",
+          "status": 3
+        },
+        "get_accounting_state": {
+          "node_count": 5,
+          "total_allocated_wei": 50,
+          "total_inbound_wei": 500,
+          "total_outbound_wei": 0,
+          "total_paid_wei": 0,
+          "total_quarantined_wei": 100,
+          "total_treasury_wei": 350
+        }
+      }
+    },
+    {
+      "label": "execute_node_action (NODE-E, Independent Branch Payout)",
+      "tx_hash": "0xdb07a50d05f9926d854b608cdf76c90fd8eb97b524e4e65c79700f34053ffbe2",
+      "explorer_url": "https://explorer-studio.genlayer.com/transactions/0xdb07a50d05f9926d854b608cdf76c90fd8eb97b524e4e65c79700f34053ffbe2",
+      "expected_failure": false,
+      "status_name": "FINALIZED",
+      "leader_execution_result": "SUCCESS",
+      "leader_error": null,
+      "votes": {
+        "0x40533175AfBbAee2c030F88259Afb5aEDbCF0E05": "agree",
+        "0x7bf4Ea55363bbe73A4dd5b3900bf03c978A63b6e": "idle",
+        "0xA712cB25a4002666FA9D09477251f238dD9e06b3": "agree",
+        "0xad7d13f269CeAd4379E64a1A3a0803a827e70B43": "agree",
+        "0xf29b6947ed298d139FC2655DB15D868C9AbB3091": "agree"
+      },
+      "accepted_status_observed": "ACCEPTED",
+      "read_backs": {
+        "get_node(NODE-E)": {
+          "activated_at": 0,
+          "allocated_wei": 0,
+          "created_at": 0,
+          "creator": "0xb518fA3f9f71965edAacF196A98db516297C0552",
+          "dependencies": [
+            "NODE-D"
+          ],
+          "envelope_citation": "",
+          "envelope_predicate": "UNCLEAR",
+          "envelope_status_code": "PENDING",
+          "evidence_url": "",
+          "node_id": "NODE-E",
+          "node_type": 2,
+          "recipient": "0xe43822Cf1ac73cD794f3444A5dD35e634E3dd19c",
+          "required_subject": "",
+          "retracted_at": 0,
+          "retraction_predicate": "UNCLEAR",
+          "retraction_status_code": "PENDING",
+          "status": 5
+        },
+        "get_accounting_state": {
+          "node_count": 5,
+          "total_allocated_wei": 0,
+          "total_inbound_wei": 500,
+          "total_outbound_wei": 50,
+          "total_paid_wei": 50,
+          "total_quarantined_wei": 100,
+          "total_treasury_wei": 350
+        }
+      }
+    },
+    {
+      "label": "guard_blocked_execution (EXPECTED FAILURE: EXPECTED:NODE_CASCADE_BLOCKED)",
+      "tx_hash": "0x800b53d55093b8f73e1289c152aa900467c9847c41015a43749410b0ff78e733",
+      "explorer_url": "https://explorer-studio.genlayer.com/transactions/0x800b53d55093b8f73e1289c152aa900467c9847c41015a43749410b0ff78e733",
+      "expected_failure": true,
+      "status_name": "FINALIZED",
+      "leader_execution_result": "ERROR",
+      "leader_error": null,
+      "votes": {
+        "0x1dEcE6A694520b1d3a2e24b9f28500858C756BDb": "agree",
+        "0x2FcBC452425f2F1e102c5c04b4331fcB46ee1c00": "agree",
+        "0x6a4179A851B3747A458baD2f089AB2EeFE0eBbAb": "agree",
+        "0x8a876C3F3a4783Bd123982bcBF3c672dc0239004": "agree",
+        "0xA712cB25a4002666FA9D09477251f238dD9e06b3": "agree"
+      },
+      "accepted_status_observed": "ACCEPTED"
+    },
+    {
+      "label": "guard_duplicate_evidence_replay (EXPECTED FAILURE: EXPECTED:DUPLICATE_EVIDENCE_URL)",
+      "tx_hash": "0x708fdb82937733240b9f5cafcca2242097467d77c14daebed68e2eff1aae37b4",
+      "explorer_url": "https://explorer-studio.genlayer.com/transactions/0x708fdb82937733240b9f5cafcca2242097467d77c14daebed68e2eff1aae37b4",
+      "expected_failure": true,
+      "status_name": "FINALIZED",
+      "leader_execution_result": "ERROR",
+      "leader_error": null,
+      "votes": {
+        "0x1dEcE6A694520b1d3a2e24b9f28500858C756BDb": "agree",
+        "0x7bf4Ea55363bbe73A4dd5b3900bf03c978A63b6e": "agree",
+        "0xa21bc502E3578E4b3039be8c59a257198f7c3f19": "agree",
+        "0xad7d13f269CeAd4379E64a1A3a0803a827e70B43": "agree",
+        "0xf29b6947ed298d139FC2655DB15D868C9AbB3091": "agree"
+      },
+      "accepted_status_observed": "ACCEPTED"
+    },
+    {
+      "label": "guard_unauthorized_domain (EXPECTED FAILURE: EXPECTED:DOMAIN_NOT_ALLOWED)",
+      "tx_hash": "0xd1bc274810ca44ce33f9090e1df7a0f842415b67e726eb39e7ec4412538c86a0",
+      "explorer_url": "https://explorer-studio.genlayer.com/transactions/0xd1bc274810ca44ce33f9090e1df7a0f842415b67e726eb39e7ec4412538c86a0",
+      "expected_failure": true,
+      "status_name": "FINALIZED",
+      "leader_execution_result": "ERROR",
+      "leader_error": null,
+      "votes": {
+        "0x1242E9f5bf9b253327f130E8802b7b2F438A21Ef": "agree",
+        "0x1dEcE6A694520b1d3a2e24b9f28500858C756BDb": "agree",
+        "0x40533175AfBbAee2c030F88259Afb5aEDbCF0E05": "agree",
+        "0x8a876C3F3a4783Bd123982bcBF3c672dc0239004": "agree",
+        "0x9244De5F20cB75A0c51d79A9A3208D00a99aFc10": "agree"
+      },
+      "accepted_status_observed": "ACCEPTED"
+    },
+    {
+      "label": "refund_quarantined_to_treasury (NODE-C -> Treasury)",
+      "tx_hash": "0xf2b801df23f993a48aabb5cde94eacd4971951a11b4dfdaef63d4aec114d606d",
+      "explorer_url": "https://explorer-studio.genlayer.com/transactions/0xf2b801df23f993a48aabb5cde94eacd4971951a11b4dfdaef63d4aec114d606d",
+      "expected_failure": false,
+      "status_name": "FINALIZED",
+      "leader_execution_result": "SUCCESS",
+      "leader_error": null,
+      "votes": {
+        "0x0B50B270Eba5D9B780272C4Cf4720260177e761D": "idle",
+        "0x2FcBC452425f2F1e102c5c04b4331fcB46ee1c00": "agree",
+        "0x6a4179A851B3747A458baD2f089AB2EeFE0eBbAb": "agree",
+        "0xad7d13f269CeAd4379E64a1A3a0803a827e70B43": "agree",
+        "0xb0925568bFbCF00aADBcA053E6D0E1628ff3d530": "idle"
+      },
+      "accepted_status_observed": "ACCEPTED",
+      "read_backs": {
+        "get_accounting_state": {
+          "node_count": 5,
+          "total_allocated_wei": 0,
+          "total_inbound_wei": 500,
+          "total_outbound_wei": 50,
+          "total_paid_wei": 50,
+          "total_quarantined_wei": 0,
+          "total_treasury_wei": 450
+        }
+      }
+    }
+  ]
+}

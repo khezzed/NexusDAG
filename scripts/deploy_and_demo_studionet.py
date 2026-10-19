@@ -30,13 +30,13 @@ def _install_resilient_rpc_retry(client) -> None:
 
     def make_request_with_retry(method, params):
         last_err = None
-        for attempt in range(12):
+        for attempt in range(15):
             try:
                 return orig_make_request(method, params)
             except Exception as err:
                 last_err = err
-                if attempt < 11:
-                    time.sleep(3.0 * (attempt + 1))
+                if attempt < 14:
+                    time.sleep(4.0 * (attempt + 1))
                     continue
                 raise
         raise last_err
@@ -82,6 +82,21 @@ def _write_lf_json(path: pathlib.Path, data: dict) -> int:
     return len(raw)
 
 
+def _send_with_resilient_retry(send_callable, max_attempts: int = 6):
+    last_e = None
+    for attempt in range(max_attempts):
+        try:
+            return send_callable()
+        except Exception as e:
+            last_e = e
+            if attempt < max_attempts - 1:
+                wait_sec = (attempt + 1) * 5
+                print(f"Transient error in send_callable ({e}); retrying in {wait_sec}s...")
+                time.sleep(wait_sec)
+                continue
+            raise last_e
+
+
 def main() -> None:
     contract_path = pathlib.Path("contracts/nexus_dag.py")
     raw_bytes = contract_path.read_bytes()
@@ -115,7 +130,7 @@ def main() -> None:
         expected_failure: bool = False,
         accept_retries: int = 80,
     ) -> tuple[dict, dict]:
-        tx_hash = send_callable()
+        tx_hash = _send_with_resilient_retry(send_callable)
         tx_hex = _hex_hash(tx_hash)
         print(f"Waiting for ACCEPTED + FINALIZED on [{label}] ({tx_hex})...")
         accepted_receipt = client.wait_for_transaction_receipt(
@@ -164,12 +179,14 @@ def main() -> None:
     print(f"Deployed contract address: {contract_address}")
 
     def read_fn(fn_name: str, args: list | None = None):
-        return client.read_contract(
-            address=contract_address,
-            function_name=fn_name,
-            args=args or [],
-            account=admin_acct,
-            transaction_hash_variant=TransactionHashVariant.LATEST_NONFINAL,
+        return _send_with_resilient_retry(
+            lambda: client.read_contract(
+                address=contract_address,
+                function_name=fn_name,
+                args=args or [],
+                account=admin_acct,
+                transaction_hash_variant=TransactionHashVariant.LATEST_NONFINAL,
+            )
         )
 
     acct_0 = read_fn("get_accounting_state")
@@ -524,7 +541,7 @@ def main() -> None:
         "source_verification": {
             "repository_url": "https://github.com/khezzed/aegis-sla-escrow",
             "contract_path": "contracts/nexus_dag.py",
-            "deployed_commit_sha": "b4f9fa8c876b39a8a0f164376ae840e87f8f64fa",
+            "deployed_commit_sha": "2bf583a5e289e5f725711f21b06aa6f1cd8267b0",
             "git_blob_sha1": computed_blob_sha1,
             "byte_length": len(raw_bytes),
             "line_endings": "LF",
