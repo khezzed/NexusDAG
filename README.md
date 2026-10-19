@@ -96,8 +96,8 @@ pytest tests/direct/ -v
 
 ## 6. Live Testnet Deployment (GenLayer StudioNet)
 
-- **Contract Address**: [`0x70dD62d9A2491B8fb66d9616C24A64c707C4B422`](https://explorer-studio.genlayer.com/address/0x70dD62d9A2491B8fb66d9616C24A64c707C4B422)
-- **Deployed Commit**: [`2bf583a5e289e5f725711f21b06aa6f1cd8267b0`](https://github.com/khezzed/aegis-sla-escrow/commit/2bf583a5e289e5f725711f21b06aa6f1cd8267b0)
+- **Contract Address**: [`0x5C6D76942Ba7505E15cE3f9a21763137F89e76bF`](https://explorer-studio.genlayer.com/address/0x5C6D76942Ba7505E15cE3f9a21763137F89e76bF)
+- **Deployed Commit**: [`2ab459d85bb48a69d84f139945d8f2c0b80218a1`](https://github.com/khezzed/NexusDAG/commit/2ab459d85bb48a69d84f139945d8f2c0b80218a1)
 - **Git Blob SHA-1 (`contracts/nexus_dag.py`)**: `e62d2a1dcc36105d050d9d8940e45f48c766c4e6`
 - **Release Manifest**: [`release_manifest.json`](release_manifest.json)
 
@@ -105,24 +105,24 @@ pytest tests/direct/ -v
 
 | Action | Transaction Hash | Status | Leader Result | Mechanism Verification / Outcome |
 | :--- | :--- | :--- | :--- | :--- |
-| **Deploy Contract** | [`0x767e...2875`](https://explorer-studio.genlayer.com/transactions/0x767e0d22bf3766a1996b442546207f333201f2d8e13f94d21d957740dba12875) | `FINALIZED` | `SUCCESS` | Contract deployed with pinned runner |
-| **Deposit Treasury** | [`0xdb03...400e`](https://explorer-studio.genlayer.com/transactions/0xdb034b10eb340b8ed709e4dd5bf86b96c20a381fef2011727f6c57506261400e) | `FINALIZED` | `SUCCESS` | Admin deposits 500 wei into unallocated treasury |
-| **Register Node A** | [`0xa00f...87e4`](https://explorer-studio.genlayer.com/transactions/0xa00fd9c6f4d5afb6fd267f6f0f6ae3016c2e23c3bafc3f25b83b03c6ea2c87e4) | `FINALIZED` | `SUCCESS` | Leaf Node A (Audit Assertion) registered |
-| **Register Node B** | [`0xdd8e...a47a`](https://explorer-studio.genlayer.com/transactions/0xdd8e27dfed43cd85367d9bcc800dab0de8f185cc7e6bacade69a262bd7a9a47a) | `FINALIZED` | `SUCCESS` | Derived Node B registered (depends on A) |
-| **Register Node C** | [`0x3dd4...9825`](https://explorer-studio.genlayer.com/transactions/0x3dd4d310944f772d63d352cf9f4c71e62534c7c582beab754500e5d303f69825) | `FINALIZED` | `SUCCESS` | Derived Node C registered (depends on B, reserves 100 wei) |
-| **Register Node D** | [`0x9223...44e0`](https://explorer-studio.genlayer.com/transactions/0x92231850853a2cf912f91812864779db733cbffdcc44e7e6b15e2172ad0544e0) | `FINALIZED` | `SUCCESS` | Independent Leaf Node D (Reserve Attestation) registered |
-| **Register Node E** | [`0x8aad...4fb2`](https://explorer-studio.genlayer.com/transactions/0x8aadf4e5cc30d437c48e63fddfa348368ae51b8444c9ec62b2fd5e49fdfc4fb2) | `FINALIZED` | `SUCCESS` | Independent Derived Node E registered (depends on D, reserves 50 wei) |
-| **Evaluate Node A** | [`0x9897...8b29`](https://explorer-studio.genlayer.com/transactions/0x9897b1a96008ecf7844d3f212fb0c0f0f77ddb3a7ccd0fb137001e29fdf18b29) | `FINALIZED` | `SUCCESS` | GenVM validators fetch audit payload $\to$ `HOLDS` $\to$ Node A `ACTIVE` |
-| **Evaluate Node B** | [`0x3e39...7979`](https://explorer-studio.genlayer.com/transactions/0x3e39d3e2fcea538b8755c0d371950249c50746130aae7594a9f5fcc0984b7979) | `FINALIZED` | `SUCCESS` | Dependency A active $\to$ Node B becomes `ACTIVE` |
-| **Evaluate Node C** | [`0x0985...8bde`](https://explorer-studio.genlayer.com/transactions/0x098514611fb6a0d6f32ace7cb55b05713a77bee25db26d7a379f04f8f2918bde) | `FINALIZED` | `SUCCESS` | Dependency B active $\to$ Node C becomes `ACTIVE` (Executable) |
-| **Evaluate Node D** | [`0x42f7...e608`](https://explorer-studio.genlayer.com/transactions/0x42f718c050a933d97745594afe84cef4aeaaf657e8e98e1f3b0f787f036ee608) | `FINALIZED` | `SUCCESS` | GenVM validators fetch reserve payload $\to$ `HOLDS` $\to$ Node D `ACTIVE` |
-| **Evaluate Node E** | [`0x2391...7c0a`](https://explorer-studio.genlayer.com/transactions/0x2391dbb85552cac366018db6a2ebf6500cd0ec7ce061027b44ecfba3d8087c0a) | `FINALIZED` | `SUCCESS` | Dependency D active $\to$ Node E becomes `ACTIVE` (Executable) |
-| **Retract Node A** | [`0x5c8a...6d69`](https://explorer-studio.genlayer.com/transactions/0x5c8ab7c524603838b43d8ceecf18603cbc803d1a4871b4105ef058b387846d69) | `FINALIZED` | `SUCCESS` | **150-Point Mechanism**: Verified CVE advisory invalidates Node A $\to$ Node A `RETRACTED`; Descendants B & C `CASCADE_BLOCKED`; 100 wei quarantined |
-| **Execute Node E** | [`0xdb07...fbe2`](https://explorer-studio.genlayer.com/transactions/0xdb07a50d05f9926d854b608cdf76c90fd8eb97b524e4e65c79700f34053ffbe2) | `FINALIZED` | `SUCCESS` | **Graph Isolation Invariant**: Independent branch E is unaffected $\to$ 50 wei disbursed to recipient $\to$ `STATUS_EXECUTED` |
-| **Guard 1: Blocked Node**| [`0x800b...e733`](https://explorer-studio.genlayer.com/transactions/0x800b53d55093b8f73e1289c152aa900467c9847c41015a43749410b0ff78e733) | `FINALIZED` | `ERROR` | `EXPECTED FAILURE`: `EXPECTED:NODE_CASCADE_BLOCKED` prevents execution on compromised path |
-| **Guard 2: URL Replay** | [`0x708f...37b4`](https://explorer-studio.genlayer.com/transactions/0x708fdb82937733240b9f5cafcca2242097467d77c14daebed68e2eff1aae37b4) | `FINALIZED` | `ERROR` | `EXPECTED FAILURE`: `EXPECTED:DUPLICATE_EVIDENCE_URL` blocks duplicate evidence injection |
-| **Guard 3: Rogue Domain**| [`0xd1bc...86a0`](https://explorer-studio.genlayer.com/transactions/0xd1bc274810ca44ce33f9090e1df7a0f842415b67e726eb39e7ec4412538c86a0) | `FINALIZED` | `ERROR` | `EXPECTED FAILURE`: `EXPECTED:DOMAIN_NOT_ALLOWED` blocks unverified external origins |
-| **Recover Quarantined** | [`0xf2b8...606d`](https://explorer-studio.genlayer.com/transactions/0xf2b801df23f993a48aabb5cde94eacd4971951a11b4dfdaef63d4aec114d606d) | `FINALIZED` | `SUCCESS` | Admin refunds 100 quarantined wei back to unallocated treasury |
+| **Deploy Contract** | [`0xa0c5...08be`](https://explorer-studio.genlayer.com/transactions/0xa0c5b7097cf6128aabc23983b8c9f7ea7b50c1c89171e1a8cd01012198e908be) | `FINALIZED` | `SUCCESS` | Contract deployed with pinned runner |
+| **Deposit Treasury** | [`0x0bd1...645a`](https://explorer-studio.genlayer.com/transactions/0x0bd13c19cac91561cec87a0c9e68fd80c66c8556aaaa1beef7b12add09ba645a) | `FINALIZED` | `SUCCESS` | Admin deposits 500 wei into unallocated treasury |
+| **Register Node A** | [`0xbd32...54d4`](https://explorer-studio.genlayer.com/transactions/0xbd328d098c01cc438cdf6a896fbc67988ffaea238ea4dad7926dd3ff9ee354d4) | `FINALIZED` | `SUCCESS` | Leaf Node A (Audit Assertion) registered |
+| **Register Node B** | [`0x50f3...198e`](https://explorer-studio.genlayer.com/transactions/0x50f32d5ec86ed94b14a4abd81268876f8de066c6a977a12ed024b169d165198e) | `FINALIZED` | `SUCCESS` | Derived Node B registered (depends on A) |
+| **Register Node C** | [`0xec42...2f93`](https://explorer-studio.genlayer.com/transactions/0xec427e871790d7152fdde2060d5c48ac9a187275bf7de7380694dc3d4e062f93) | `FINALIZED` | `SUCCESS` | Derived Node C registered (depends on B, reserves 100 wei) |
+| **Register Node D** | [`0x1f70...15d8`](https://explorer-studio.genlayer.com/transactions/0x1f70a16cab11c38ae881343416d769bc6da8f41f3e180ac6fd3eda90e621b5d8) | `FINALIZED` | `SUCCESS` | Independent Leaf Node D (Reserve Attestation) registered |
+| **Register Node E** | [`0x80df...6d47`](https://explorer-studio.genlayer.com/transactions/0x80df044c8e6f52ed555e845a08f28caff67de1169211e6f0553c4a9412066d47) | `FINALIZED` | `SUCCESS` | Independent Derived Node E registered (depends on D, reserves 50 wei) |
+| **Evaluate Node A** | [`0xa44b...37a0`](https://explorer-studio.genlayer.com/transactions/0xa44ba32b7b44c00b18535a3d2cc2f5da2426b39fdc352939e2cee1696dcc37a0) | `FINALIZED` | `SUCCESS` | GenVM validators fetch audit payload $\to$ `HOLDS` $\to$ Node A `ACTIVE` |
+| **Evaluate Node B** | [`0x5b93...0ff6`](https://explorer-studio.genlayer.com/transactions/0x5b9335602ac3bf8d0014b9139262a22a8cb6a9538606e1649642182085a00ff6) | `FINALIZED` | `SUCCESS` | Dependency A active $\to$ Node B becomes `ACTIVE` |
+| **Evaluate Node C** | [`0x8106...615a`](https://explorer-studio.genlayer.com/transactions/0x8106659c1b91cb5d8af0fbe8a232b864bebeeafc7901df702deb4c9c8ca0615a) | `FINALIZED` | `SUCCESS` | Dependency B active $\to$ Node C becomes `ACTIVE` (Executable) |
+| **Evaluate Node D** | [`0x7b39...9cf4`](https://explorer-studio.genlayer.com/transactions/0x7b398c2d4c3b0f9a5f1c479da950f24c23b831bcf1c63f7156ba4a2798299cf4) | `FINALIZED` | `SUCCESS` | GenVM validators fetch reserve payload $\to$ `HOLDS` $\to$ Node D `ACTIVE` |
+| **Evaluate Node E** | [`0x1ed6...b9e3`](https://explorer-studio.genlayer.com/transactions/0x1ed636bfd6d3a5280c946698a6d20e09d3e4acd4d9faed09c323466c3029b9e3) | `FINALIZED` | `SUCCESS` | Dependency D active $\to$ Node E becomes `ACTIVE` (Executable) |
+| **Retract Node A** | [`0xd38d...4bf9`](https://explorer-studio.genlayer.com/transactions/0xd38dc37f476d4a8dd83dd38764a3b7180aaf36ea7099cba832e920372aef4bf9) | `FINALIZED` | `SUCCESS` | **150-Point Mechanism**: Verified CVE advisory invalidates Node A $\to$ Node A `RETRACTED`; Descendants B & C `CASCADE_BLOCKED`; 100 wei quarantined |
+| **Execute Node E** | [`0xc953...cc85`](https://explorer-studio.genlayer.com/transactions/0xc9536f20c321ae022578b40e05b453ef96aa1e5c7ac682a53de6e0008416cc85) | `FINALIZED` | `SUCCESS` | **Graph Isolation Invariant**: Independent branch E is unaffected $\to$ 50 wei disbursed to recipient $\to$ `STATUS_EXECUTED` |
+| **Guard 1: Blocked Node**| [`0x0158...01fd`](https://explorer-studio.genlayer.com/transactions/0x015822679db442ab82280bf6101f68ffb88683ed07a34819c34fd8c52ab601fd) | `FINALIZED` | `ERROR` | `EXPECTED FAILURE`: `EXPECTED:NODE_CASCADE_BLOCKED` prevents execution on compromised path |
+| **Guard 2: URL Replay** | [`0x0c52...c718`](https://explorer-studio.genlayer.com/transactions/0x0c522e3184014ada03c7dd5c4edf978d3ca6088ed62ce4af883593fcda50c718) | `FINALIZED` | `ERROR` | `EXPECTED FAILURE`: `EXPECTED:DUPLICATE_EVIDENCE_URL` blocks duplicate evidence injection |
+| **Guard 3: Rogue Domain**| [`0x7e61...196c`](https://explorer-studio.genlayer.com/transactions/0x7e61405891d6afe9a99b228dee96a5d0a28fe3779a366dd53ccd54feffb0196c) | `FINALIZED` | `ERROR` | `EXPECTED FAILURE`: `EXPECTED:DOMAIN_NOT_ALLOWED` blocks unverified external origins |
+| **Recover Quarantined** | [`0xd516...848b`](https://explorer-studio.genlayer.com/transactions/0xd5163b8d68beef4ed048eedd4d813f23c8c4ecaa5b120cbfbd800b1f36f6848b) | `FINALIZED` | `SUCCESS` | Admin refunds 100 quarantined wei back to unallocated treasury |
 
 ---
 
@@ -133,5 +133,5 @@ NexusDAG implements autonomous multi-validator qualitative evidence adjudication
 
 Unlike flat classification templates, operations and settlements depend on a topological graph of judged atoms. When an upstream certificate (Node A) is retracted via verified CVE advisory, GenVM validators verify the retraction proof and deterministic code cascade-blocks all reachable descendants (B and C) and quarantines allocated funds. Critically, the Graph Isolation Invariant guarantees that disjoint independent branches (D -> E) remain 100% active and executable, proving that upstream failure does not poison unrelated operations.
 
-Demonstrated live on StudioNet (0x70dD62d9A2491B8fb66d9616C24A64c707C4B422): Node E successfully settled while compromised Node C was blocked (EXPECTED:NODE_CASCADE_BLOCKED), with guards blocking duplicate evidence replay and unauthorized domains.
+Demonstrated live on StudioNet (0x5C6D76942Ba7505E15cE3f9a21763137F89e76bF): Node E successfully settled while compromised Node C was blocked (EXPECTED:NODE_CASCADE_BLOCKED), with guards blocking duplicate evidence replay and unauthorized domains.
 ```

@@ -12,9 +12,9 @@ ENDPOINT = "https://studio.genlayer.com/api"
 EXPLORER_BASE = "https://explorer-studio.genlayer.com"
 
 PINNED_FIXTURES = {
-    "leaf_a_audit": "https://raw.githubusercontent.com/khezzed/aegis-sla-escrow/b4f9fa8c876b39a8a0f164376ae840e87f8f64fa/fixtures/nexus/audit_clean_leaf_a.json",
-    "retract_a_cve": "https://raw.githubusercontent.com/khezzed/aegis-sla-escrow/b4f9fa8c876b39a8a0f164376ae840e87f8f64fa/fixtures/nexus/audit_cve_retraction_a.json",
-    "leaf_d_reserves": "https://raw.githubusercontent.com/khezzed/aegis-sla-escrow/b4f9fa8c876b39a8a0f164376ae840e87f8f64fa/fixtures/nexus/reserves_clean_leaf_d.json",
+    "leaf_a_audit": "https://raw.githubusercontent.com/khezzed/NexusDAG/2ab459d85bb48a69d84f139945d8f2c0b80218a1/fixtures/evidence/audit_clean_leaf_a.json",
+    "retract_a_cve": "https://raw.githubusercontent.com/khezzed/NexusDAG/2ab459d85bb48a69d84f139945d8f2c0b80218a1/fixtures/evidence/audit_cve_retraction_a.json",
+    "leaf_d_reserves": "https://raw.githubusercontent.com/khezzed/NexusDAG/2ab459d85bb48a69d84f139945d8f2c0b80218a1/fixtures/evidence/reserves_clean_leaf_d.json",
 }
 
 CTOR_ARGS = [
@@ -133,19 +133,25 @@ def main() -> None:
         tx_hash = _send_with_resilient_retry(send_callable)
         tx_hex = _hex_hash(tx_hash)
         print(f"Waiting for ACCEPTED + FINALIZED on [{label}] ({tx_hex})...")
-        accepted_receipt = client.wait_for_transaction_receipt(
-            transaction_hash=tx_hex,
-            status=TransactionStatus.ACCEPTED,
-            interval=3000,
-            retries=accept_retries,
-        )
+        def _wait_receipt_resilient(target_status, retries_count):
+            for poll_attempt in range(6):
+                try:
+                    return client.wait_for_transaction_receipt(
+                        transaction_hash=tx_hex,
+                        status=target_status,
+                        interval=3000,
+                        retries=retries_count,
+                    )
+                except Exception as poll_err:
+                    if poll_attempt < 5:
+                        print(f"Transient error waiting for {target_status} ({poll_err}); retrying wait in 5s...")
+                        time.sleep(5)
+                        continue
+                    raise poll_err
+
+        accepted_receipt = _wait_receipt_resilient(TransactionStatus.ACCEPTED, accept_retries)
         accepted_status = str(accepted_receipt.get("status_name", accepted_receipt.get("status", "")))
-        final_receipt = client.wait_for_transaction_receipt(
-            transaction_hash=tx_hex,
-            status=TransactionStatus.FINALIZED,
-            interval=3000,
-            retries=80,
-        )
+        final_receipt = _wait_receipt_resilient(TransactionStatus.FINALIZED, 80)
         summary = _extract_receipt_summary(tx_hex, final_receipt, expected_failure, label)
         summary["accepted_status_observed"] = accepted_status
         print(
@@ -539,9 +545,9 @@ def main() -> None:
             "explorer_base_url": EXPLORER_BASE,
         },
         "source_verification": {
-            "repository_url": "https://github.com/khezzed/aegis-sla-escrow",
+            "repository_url": "https://github.com/khezzed/NexusDAG",
             "contract_path": "contracts/nexus_dag.py",
-            "deployed_commit_sha": "2bf583a5e289e5f725711f21b06aa6f1cd8267b0",
+            "deployed_commit_sha": "2ab459d85bb48a69d84f139945d8f2c0b80218a1",
             "git_blob_sha1": computed_blob_sha1,
             "byte_length": len(raw_bytes),
             "line_endings": "LF",
