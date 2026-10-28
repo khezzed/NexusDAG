@@ -44,9 +44,9 @@ Traditional smart contracts cannot evaluate qualitative natural language evidenc
 ### A. Directed Acyclic Graph Structure
 - **Node Types**:
   - `NODE_TYPE_EVIDENCE` (1): Leaf nodes representing qualitative assertions grounded in external HTTPS evidence (e.g., audit reports, solvency attestations).
-  - `NODE_TYPE_DERIVED` (2): Internal and terminal nodes representing operations that depend on one or more parent nodes.
+  - `NODE_TYPE_DERIVED` (2): Internal and terminal nodes representing operations that depend on one or more parent nodes. Derived nodes **must** declare at least one upstream dependency (`EXPECTED:DERIVED_NODE_REQUIRES_DEPENDENCIES`).
 - **Topological Integrity**: When registering nodes, the contract performs cycle detection (DFS/BFS traversal). Self-dependencies and multi-hop cycles are rejected at registration time.
-- **Execution Guard**: A derived node can only transition to `STATUS_ACTIVE` when all of its declared upstream dependencies have already achieved `STATUS_ACTIVE`.
+- **Execution Guard**: A derived node can only transition to `STATUS_ACTIVE` when all of its declared upstream dependencies have already achieved `STATUS_ACTIVE`. Terminal settlement execution (`execute_node_action`) is restricted to the contract admin, the node creator, or the designated recipient (`EXPECTED:UNAUTHORIZED_EXECUTION`).
 
 ### B. GenVM Multi-Validator Qualitative Evidence Adjudication
 - **Discrete Allowlist Tokens**: LLMs are never permitted to directly decide financial balances, contract state, or graph routes. The LLM only classifies evidence into strictly bounded discrete tokens: `HOLDS`, `CONTRADICTED`, or `UNCLEAR`.
@@ -57,11 +57,14 @@ Traditional smart contracts cannot evaluate qualitative natural language evidenc
 ### C. Selective Upstream Retraction & Subtree Invalidation
 When new evidence refutes a previously validated leaf (e.g. an emergency CVE advisory published by an auditor):
 1. Any participant can submit the retraction advisory URL via `retract_node(node_id, retraction_url)`.
-2. GenVM validators independently fetch and evaluate the revocation advisory.
-3. Upon consensus confirming revocation:
-   - The root node transitions to `STATUS_RETRACTED`.
-   - The contract deterministically traverses the transitive closure of all reachable downstream descendants, transitioning each to `STATUS_CASCADE_BLOCKED`.
-   - Any funds allocated to affected nodes are automatically moved into a protected quarantined pool (`total_quarantined_wei`), preventing unauthorized disbursement.
+2. GenVM validators independently fetch and evaluate the revocation advisory (`HOLDS` = evidence affirmatively proves the certification is revoked/retracted; `CONTRADICTED` = evidence shows the certification remains valid/not retracted).
+3. **Strict Affirmative Retraction Rule**:
+   - Retraction occurs **only** when the agreed consensus envelope returns `predicate == "HOLDS"`.
+   - If the consensus predicate is `"CONTRADICTED"` or `"UNCLEAR"`, the node remains `STATUS_ACTIVE` and all allocated and treasury funds remain completely unchanged.
+   - Upon affirmative `HOLDS` consensus confirming revocation:
+     - The root node transitions to `STATUS_RETRACTED`.
+     - The contract deterministically traverses the transitive closure of all reachable downstream descendants, transitioning each to `STATUS_CASCADE_BLOCKED`.
+     - Any funds allocated to affected nodes are automatically moved into a protected quarantined pool (`total_quarantined_wei`), preventing unauthorized disbursement.
 
 ### D. The Graph Isolation Invariant
 Upstream invalidations are strictly bounded by reachability in the DAG. Formally:
@@ -70,13 +73,14 @@ $$\text{For any node } W \text{ such that } U \not\rightsquigarrow W, \text{ the
 
 This invariant ensures that separate operational branches (e.g. treasury payouts backed by independent reserve attestations) continue functioning normally without cross-contamination.
 
-### E. Deterministic Treasury Accounting & Fund Safety
-The contract enforces strict balance conservation across all operations:
+### E. Deterministic Treasury Accounting & Caller-Bound Fund Safety
+The contract enforces strict balance conservation and caller-owned deposit authorization across all operations:
 $$\text{total\_inbound\_wei} - \text{total\_outbound\_wei} = \text{total\_treasury\_wei} + \text{total\_allocated\_wei} + \text{total\_quarantined\_wei}$$
 
-- **Unallocated Treasury (`total_treasury_wei`)**: Liquid funds available for node reservation.
-- **Allocated Pool (`total_allocated_wei`)**: Funds reserved for active or pending settlement nodes.
-- **Quarantined Pool (`total_quarantined_wei`)**: Funds that were reserved on paths subsequently blocked by upstream retractions. The admin can refund quarantined funds back to the treasury via `refund_quarantined_to_treasury(node_id)`.
+- **Caller-Bound Deposit Tracking (`depositor_balances`)**: Every `deposit_treasury()` call credits `self.depositor_balances[sender]` alongside `total_treasury_wei`. A caller registering a node with `allocated_wei > 0` may only reserve up to their own unallocated deposit balance (`EXPECTED:UNAUTHORIZED_TREASURY_ALLOCATION`). Zero-allocation structural nodes may only be registered by `self.admin` (`EXPECTED:UNAUTHORIZED_NODE_REGISTRATION`).
+- **Unallocated Treasury (`total_treasury_wei`)**: Liquid funds available for node reservation by their respective depositors.
+- **Allocated Pool (`total_allocated_wei`)**: Funds reserved for active or pending settlement nodes. If a leaf node is rejected during evaluation, its allocation is refunded back to `total_treasury_wei` and restored to `depositor_balances[node.creator]`.
+- **Quarantined Pool (`total_quarantined_wei`)**: Funds that were reserved on paths subsequently blocked by upstream retractions. The admin can refund quarantined funds back to the treasury (restoring `depositor_balances[node.creator]`) via `refund_quarantined_to_treasury(node_id)`.
 
 ---
 
@@ -181,7 +185,7 @@ genvm-lint typecheck contracts/nexus_dag.py
 ```bash
 pytest tests/direct/ -v
 ```
-*Output: `19 passed in 0.08s`*
+*Output: `21 passed in 0.46s`*
 
 The test suite covers:
 - Adversarial leader proposing identical headline status with forged citation.
@@ -190,48 +194,54 @@ The test suite covers:
 - Unauthorized external domain registration.
 - Cycle detection across self-dependencies and multi-hop paths.
 - Selective retraction propagation and independent branch execution.
+- **Unauthorized empty-dependency derived-node payout prevention** (`test_unauthorized_empty_dependency_derived_node_payout_attempt_blocked`): proves derived nodes require upstream dependencies and untrusted callers cannot allocate or drain shared treasury funds (`depositor_balances` binding).
+- **`CONTRADICTED` retraction evidence immunity** (`test_contradicted_retraction_evidence_leaves_node_and_funds_unchanged`): proves retraction occurs only on affirmative `HOLDS` consensus and that `CONTRADICTED` retraction evidence leaves the node `STATUS_ACTIVE` and all allocated/treasury funds unchanged.
 
 ---
 
 ## 7. Live Testnet Deployment (GenLayer StudioNet)
 
 - **Network**: GenLayer StudioNet (`https://studio.genlayer.com/api`)
-- **Contract Address**: [`0x5C6D76942Ba7505E15cE3f9a21763137F89e76bF`](https://explorer-studio.genlayer.com/address/0x5C6D76942Ba7505E15cE3f9a21763137F89e76bF)
-- **Deployed Commit**: [`2ab459d85bb48a69d84f139945d8f2c0b80218a1`](https://github.com/khezzed/NexusDAG/commit/2ab459d85bb48a69d84f139945d8f2c0b80218a1)
-- **Git Blob SHA-1 (`contracts/nexus_dag.py`)**: `e62d2a1dcc36105d050d9d8940e45f48c766c4e6`
+- **Contract Address**: [`0x11a877F15211054987932d9EAC55f1e7b9252656`](https://explorer-studio.genlayer.com/address/0x11a877F15211054987932d9EAC55f1e7b9252656)
+- **Deployed Commit**: [`887d8eb70d7ccf724b0b32a59dd8cabb1484e61e`](https://github.com/khezzed/NexusDAG/commit/887d8eb70d7ccf724b0b32a59dd8cabb1484e61e)
+- **Git Blob SHA-1 (`contracts/nexus_dag.py`)**: `a1d08449faeb3b15375c08e9fce71fd2c70d02bd`
 - **Release Manifest**: [`release_manifest.json`](release_manifest.json)
 
 ### Complete On-Chain Transaction Walkthrough
 
-The contract was demonstrated on StudioNet through an 18-step sequential scenario proving graph registration, multi-validator qualitative consensus, upstream retraction propagation, independent branch isolation, and defensive security guards:
+The contract was demonstrated on StudioNet through a 20-step sequential scenario proving graph registration, multi-validator qualitative consensus, upstream retraction propagation, independent branch isolation, and defensive security guards:
 
 | Step | Action | Transaction Hash | Status | Leader Execution | Verified On-Chain Behavior |
 | :---: | :--- | :--- | :---: | :---: | :--- |
-| **1** | **Deploy Contract** | [`0xa0c5...08be`](https://explorer-studio.genlayer.com/transactions/0xa0c5b7097cf6128aabc23983b8c9f7ea7b50c1c89171e1a8cd01012198e908be) | `FINALIZED` | `SUCCESS` | Pinned GenVM runner verified; contract instantiated. |
-| **2** | **Deposit Treasury** | [`0x0bd1...645a`](https://explorer-studio.genlayer.com/transactions/0x0bd13c19cac91561cec87a0c9e68fd80c66c8556aaaa1beef7b12add09ba645a) | `FINALIZED` | `SUCCESS` | Deposited 500 wei into unallocated treasury balance. |
-| **3** | **Register Node A** | [`0xbd32...54d4`](https://explorer-studio.genlayer.com/transactions/0xbd328d098c01cc438cdf6a896fbc67988ffaea238ea4dad7926dd3ff9ee354d4) | `FINALIZED` | `SUCCESS` | Leaf Node A registered with pinned audit report evidence URL. |
-| **4** | **Register Node B** | [`0x50f3...198e`](https://explorer-studio.genlayer.com/transactions/0x50f32d5ec86ed94b14a4abd81268876f8de066c6a977a12ed024b169d165198e) | `FINALIZED` | `SUCCESS` | Derived Node B registered with dependency on Node A. |
-| **5** | **Register Node C** | [`0xec42...2f93`](https://explorer-studio.genlayer.com/transactions/0xec427e871790d7152fdde2060d5c48ac9a187275bf7de7380694dc3d4e062f93) | `FINALIZED` | `SUCCESS` | Derived Node C registered (depends on B, reserves 100 wei from treasury). |
-| **6** | **Register Node D** | [`0x1f70...15d8`](https://explorer-studio.genlayer.com/transactions/0x1f70a16cab11c38ae881343416d769bc6da8f41f3e180ac6fd3eda90e621b5d8) | `FINALIZED` | `SUCCESS` | Independent Leaf Node D registered with reserve attestation evidence URL. |
-| **7** | **Register Node E** | [`0x80df...6d47`](https://explorer-studio.genlayer.com/transactions/0x80df044c8e6f52ed555e845a08f28caff67de1169211e6f0553c4a9412066d47) | `FINALIZED` | `SUCCESS` | Independent Derived Node E registered (depends on D, reserves 50 wei). |
-| **8** | **Evaluate Node A** | [`0xa44b...37a0`](https://explorer-studio.genlayer.com/transactions/0xa44ba32b7b44c00b18535a3d2cc2f5da2426b39fdc352939e2cee1696dcc37a0) | `FINALIZED` | `SUCCESS` | Validators independently fetch audit evidence $\to$ `HOLDS` $\to$ Node A becomes `ACTIVE`. |
-| **9** | **Evaluate Node B** | [`0x5b93...0ff6`](https://explorer-studio.genlayer.com/transactions/0x5b9335602ac3bf8d0014b9139262a22a8cb6a9538606e1649642182085a00ff6) | `FINALIZED` | `SUCCESS` | Upstream Node A is active $\to$ Derived Node B transitions to `ACTIVE`. |
-| **10** | **Evaluate Node C** | [`0x8106...615a`](https://explorer-studio.genlayer.com/transactions/0x8106659c1b91cb5d8af0fbe8a232b864bebeeafc7901df702deb4c9c8ca0615a) | `FINALIZED` | `SUCCESS` | Upstream Node B is active $\to$ Node C transitions to `ACTIVE` (executable). |
-| **11** | **Evaluate Node D** | [`0x7b39...9cf4`](https://explorer-studio.genlayer.com/transactions/0x7b398c2d4c3b0f9a5f1c479da950f24c23b831bcf1c63f7156ba4a2798299cf4) | `FINALIZED` | `SUCCESS` | Validators fetch reserve evidence $\to$ `HOLDS` $\to$ Node D becomes `ACTIVE`. |
-| **12** | **Evaluate Node E** | [`0x1ed6...b9e3`](https://explorer-studio.genlayer.com/transactions/0x1ed636bfd6d3a5280c946698a6d20e09d3e4acd4d9faed09c323466c3029b9e3) | `FINALIZED` | `SUCCESS` | Upstream Node D is active $\to$ Node E transitions to `ACTIVE` (executable). |
-| **13** | **Retract Node A** | [`0xd38d...4bf9`](https://explorer-studio.genlayer.com/transactions/0xd38dc37f476d4a8dd83dd38764a3b7180aaf36ea7099cba832e920372aef4bf9) | `FINALIZED` | `SUCCESS` | Verified CVE advisory revokes Node A $\to$ Node A transitions to `RETRACTED`; descendants B and C cascade to `CASCADE_BLOCKED`; 100 wei moved to quarantined pool. |
-| **14** | **Execute Node E** | [`0xc953...cc85`](https://explorer-studio.genlayer.com/transactions/0xc9536f20c321ae022578b40e05b453ef96aa1e5c7ac682a53de6e0008416cc85) | `FINALIZED` | `SUCCESS` | **Graph Isolation Invariant**: Independent branch E is unaffected $\to$ 50 wei disbursed to recipient $\to$ Node E transitions to `STATUS_EXECUTED`. |
-| **15** | **Guard: Blocked Node** | [`0x0158...01fd`](https://explorer-studio.genlayer.com/transactions/0x015822679db442ab82280bf6101f68ffb88683ed07a34819c34fd8c52ab601fd) | `FINALIZED` | `ERROR` | `EXPECTED FAILURE`: Calling `execute_node_action` on cascade-blocked Node C reverts with `EXPECTED:NODE_CASCADE_BLOCKED`. |
-| **16** | **Guard: Replay Evidence** | [`0x0c52...c718`](https://explorer-studio.genlayer.com/transactions/0x0c522e3184014ada03c7dd5c4edf978d3ca6088ed62ce4af883593fcda50c718) | `FINALIZED` | `ERROR` | `EXPECTED FAILURE`: Replaying already-evaluated evidence URL on a new node reverts with `EXPECTED:DUPLICATE_EVIDENCE_URL`. |
-| **17** | **Guard: Rogue Domain** | [`0x7e61...196c`](https://explorer-studio.genlayer.com/transactions/0x7e61405891d6afe9a99b228dee96a5d0a28fe3779a366dd53ccd54feffb0196c) | `FINALIZED` | `ERROR` | `EXPECTED FAILURE`: Attempting to register an unapproved external domain reverts with `EXPECTED:DOMAIN_NOT_ALLOWED`. |
-| **18** | **Refund Quarantined** | [`0xd516...848b`](https://explorer-studio.genlayer.com/transactions/0xd5163b8d68beef4ed048eedd4d813f23c8c4ecaa5b120cbfbd800b1f36f6848b) | `FINALIZED` | `SUCCESS` | Admin recovers 100 quarantined wei back into unallocated treasury; full conservation invariant verified. |
+| **1** | **Deploy Contract** | [`0x3aab...a13d`](https://explorer-studio.genlayer.com/transactions/0x3aab1e7d3549b02a3f295e643700076e60e48034ec80dc83a9d8d35eec34a13d) | `FINALIZED` | `SUCCESS` | Pinned GenVM runner verified; contract instantiated at `0x11a877F15211054987932d9EAC55f1e7b9252656`. |
+| **2** | **Deposit Treasury** | [`0xff2c...55e4`](https://explorer-studio.genlayer.com/transactions/0xff2c95c6030b1c4bc4c0052d987aaeae636e757cb0127d6fd5080e32da9c55e4) | `FINALIZED` | `SUCCESS` | Admin deposited 500 wei into treasury and credited `depositor_balances[admin]`. |
+| **3** | **Register Node A** | [`0xd6a7...c60c`](https://explorer-studio.genlayer.com/transactions/0xd6a735cd2c33c554a0de28a4cd23939bb6d1e6bda09bd3a4699c01a1ca54c60c) | `FINALIZED` | `SUCCESS` | Leaf Node A registered with pinned audit report evidence URL. |
+| **4** | **Register Node B** | [`0xb8e7...76be`](https://explorer-studio.genlayer.com/transactions/0xb8e75e9cd331e8568ad296d8850f2d4304204bf9352bf1109eb56d8b518576be) | `FINALIZED` | `SUCCESS` | Derived Node B registered with dependency on Node A. |
+| **5** | **Register Node C** | [`0xaaea...3c77`](https://explorer-studio.genlayer.com/transactions/0xaaeace881216edf0932943fb2c6683636777a3430e90441bcf5286d1165f3c77) | `FINALIZED` | `SUCCESS` | Derived Node C registered (depends on B, reserves 100 wei from admin's deposit). |
+| **6** | **Register Node D** | [`0x460a...7888`](https://explorer-studio.genlayer.com/transactions/0x460aa0d65eaae3763ede23f9f9fb7ebb75e19cd5c93770c6386b8b2880427888) | `FINALIZED` | `SUCCESS` | Independent Leaf Node D registered with reserve attestation evidence URL. |
+| **7** | **Register Node E** | [`0x303b...9eac`](https://explorer-studio.genlayer.com/transactions/0x303b5eb936082debc24a95281e039f454cc8c38dc345df6c8e3a7dd5666a9eac) | `FINALIZED` | `SUCCESS` | Independent Derived Node E registered (depends on D, reserves 50 wei). |
+| **8** | **Evaluate Node A** | [`0x6d37...db0d`](https://explorer-studio.genlayer.com/transactions/0x6d37aa3b8c4aeac2f622d02c4e2c6a4cfc7d10789057ad13c5639897a320db0d) | `FINALIZED` | `SUCCESS` | Validators independently fetch audit evidence $\to$ `HOLDS` $\to$ Node A becomes `ACTIVE`. |
+| **9** | **Evaluate Node B** | [`0x2f2e...aa7b`](https://explorer-studio.genlayer.com/transactions/0x2f2ed7f33cd70fd41bdc94d861880671510bb7cd0a20b867598377cb298caa7b) | `FINALIZED` | `SUCCESS` | Upstream Node A is active $\to$ Derived Node B transitions to `ACTIVE`. |
+| **10** | **Evaluate Node C** | [`0x4911...ae93`](https://explorer-studio.genlayer.com/transactions/0x491108faf177d2eb4d6382c084d8accc43c560989dc4085ef41da2194f04ae93) | `FINALIZED` | `SUCCESS` | Upstream Node B is active $\to$ Node C transitions to `ACTIVE` (executable). |
+| **11** | **Evaluate Node D** | [`0xe317...8d81`](https://explorer-studio.genlayer.com/transactions/0xe317d6e5730385fed9328dbecb57f20ea2b59d17285ae58a577bff86d5318d81) | `FINALIZED` | `SUCCESS` | Validators fetch reserve evidence $\to$ `HOLDS` $\to$ Node D becomes `ACTIVE`. |
+| **12** | **Evaluate Node E** | [`0x2f4d...6701`](https://explorer-studio.genlayer.com/transactions/0x2f4dec4ce29318a5b6c24dc56ed2029b6c2af86d453fc456aa0bad08bca116701) | `FINALIZED` | `SUCCESS` | Upstream Node D is active $\to$ Node E transitions to `ACTIVE` (executable). |
+| **13** | **Retract Node A** | [`0x1e95...867e`](https://explorer-studio.genlayer.com/transactions/0x1e9540dd0a68bc83c477fbf463e344e2daf733d04e369666733fff197d79867e) | `FINALIZED` | `SUCCESS` | Verified CVE advisory (`predicate == HOLDS`) revokes Node A $\to$ Node A transitions to `RETRACTED`; descendants B and C cascade to `CASCADE_BLOCKED`; 100 wei moved to quarantined pool. |
+| **14** | **Execute Node E** | [`0xad69...9f30`](https://explorer-studio.genlayer.com/transactions/0xad69b452e93583f1e25d836afd5f70c2b99d2c9f913424292e305a3f9a5e9f30) | `FINALIZED` | `SUCCESS` | **Graph Isolation Invariant**: Independent branch E is unaffected $\to$ 50 wei disbursed to recipient $\to$ Node E transitions to `STATUS_EXECUTED`. |
+| **15** | **Guard: Blocked Node** | [`0x8d27...934e`](https://explorer-studio.genlayer.com/transactions/0x8d27a4823ce59aff9685142ed8174843c7d1f54ddb37873497bcce8f1550934e) | `FINALIZED` | `ERROR` | `EXPECTED FAILURE`: Calling `execute_node_action` on cascade-blocked Node C reverts with `EXPECTED:NODE_CASCADE_BLOCKED`. |
+| **16** | **Guard: Replay Evidence** | [`0x5d34...20d0`](https://explorer-studio.genlayer.com/transactions/0x5d34c356e9bef6caa57ca7c07ed971a40c978e67059f74ba9810c0e36fb920d0) | `FINALIZED` | `ERROR` | `EXPECTED FAILURE`: Replaying already-evaluated evidence URL on a new node reverts with `EXPECTED:DUPLICATE_EVIDENCE_URL`. |
+| **17** | **Guard: Rogue Domain** | [`0x2b04...8385`](https://explorer-studio.genlayer.com/transactions/0x2b04fffcf52d870cc01388ea58d750727f585a19d9a0d891ffa19687c12f8385) | `FINALIZED` | `ERROR` | `EXPECTED FAILURE`: Attempting to register an unapproved external domain reverts with `EXPECTED:DOMAIN_NOT_ALLOWED`. |
+| **18** | **Guard: Empty-Dep Derived** | [`0xbce3...f458`](https://explorer-studio.genlayer.com/transactions/0xbce3096a89bcc5d392d9010658207ee55e9f40d057eec0da3aecb3b1c5a3f458) | `FINALIZED` | `ERROR` | `EXPECTED FAILURE`: Registering a derived node with empty dependencies reverts with `EXPECTED:DERIVED_NODE_REQUIRES_DEPENDENCIES`. |
+| **19** | **Guard: Unauth Allocation** | [`0x4d9e...9a7d`](https://explorer-studio.genlayer.com/transactions/0x4d9ebea78d11f1696c8da5e70c6bdc73f9fe442128ea8da669b90805056d9a7d) | `FINALIZED` | `ERROR` | `EXPECTED FAILURE`: Untrusted caller attempting to allocate from shared treasury without deposit balance reverts with `EXPECTED:UNAUTHORIZED_TREASURY_ALLOCATION`. |
+| **20** | **Refund Quarantined** | [`0x7ada...baf8`](https://explorer-studio.genlayer.com/transactions/0x7adae03bb39e40c1799c81a1e890a46e47c051f7ebfde3678586ca5c6e58baf8) | `FINALIZED` | `SUCCESS` | Admin recovers 100 quarantined wei back into unallocated treasury; full conservation invariant verified. |
 
 ---
 
 ## 8. Security Invariants & Defensive Design
 
 1. **Deterministic Equivalence Principle**: Validators independently query external URLs, extract citations, and agree on all envelope fields. Non-deterministic closure state is completely isolated from contract storage.
-2. **Cycle Prevention**: The DAG registration algorithm validates that adding an edge cannot produce a cycle via depth-first and breadth-first search.
-3. **Payload Bounds & Timeouts**: Maximum evidence payload size is capped at 32 KB. Payloads smaller than 32 bytes or failing HTTP 200 checks fail closed.
-4. **Conservation of Balances**: Total inbound wei equals the sum of unallocated treasury, active allocations, quarantined balances, and outbound disbursements at all times.
-5. **Separation of Concerns**: Qualitative evaluation is performed strictly by GenVM validators; all state transitions, dependency checks, funds management, and graph traversals are executed deterministically in ordinary smart contract code.
+2. **Cycle & Empty-Dependency Prevention**: The DAG registration algorithm validates that derived nodes declare non-empty dependencies and that adding an edge cannot produce a cycle via depth-first and breadth-first search.
+3. **Caller-Owned Deposit Binding**: Positive treasury allocations (`allocated_wei > 0`) are strictly bound to the caller's own unallocated deposit balance (`depositor_balances[sender]`), preventing untrusted callers from draining the shared treasury.
+4. **Affirmative `HOLDS`-Only Retraction**: `retract_node` only invalidates a node and quarantines funds when the agreed validator consensus envelope returns `predicate == "HOLDS"`. A `"CONTRADICTED"` or `"UNCLEAR"` result leaves the node and funds unchanged.
+5. **Payload Bounds & Timeouts**: Maximum evidence payload size is capped at 32 KB. Payloads smaller than 32 bytes or failing HTTP 200 checks fail closed.
+6. **Conservation of Balances**: Total inbound wei equals the sum of unallocated treasury, active allocations, quarantined balances, and outbound disbursements at all times.
+7. **Separation of Concerns**: Qualitative evaluation is performed strictly by GenVM validators; all state transitions, dependency checks, funds management, and graph traversals are executed deterministically in ordinary smart contract code.

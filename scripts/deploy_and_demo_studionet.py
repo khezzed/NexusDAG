@@ -513,6 +513,46 @@ def main() -> None:
         expected_failure=True,
     )
 
+    # Guard 4: Unauthorized empty-dependency derived-node payout attempt by stranger
+    send_and_wait_tx(
+        label="guard_empty_dependency_derived_node (EXPECTED FAILURE: EXPECTED:DERIVED_NODE_REQUIRES_DEPENDENCIES)",
+        send_callable=lambda: client.write_contract(
+            address=contract_address,
+            function_name="register_node",
+            account=stranger_acct,
+            args=[
+                "NODE-EMPTY-DERIVED",
+                2,  # NODE_TYPE_DERIVED
+                [],
+                "",
+                "",
+                100,
+                stranger_acct.address,
+            ],
+        ),
+        expected_failure=True,
+    )
+
+    # Guard 5: Untrusted caller attempting to allocate from shared treasury without caller-owned deposit
+    send_and_wait_tx(
+        label="guard_unauthorized_treasury_allocation (EXPECTED FAILURE: EXPECTED:UNAUTHORIZED_TREASURY_ALLOCATION)",
+        send_callable=lambda: client.write_contract(
+            address=contract_address,
+            function_name="register_node",
+            account=stranger_acct,
+            args=[
+                "NODE-STRANGER-DRAIN",
+                2,  # NODE_TYPE_DERIVED
+                ["NODE-D"],
+                "",
+                "",
+                100,
+                stranger_acct.address,
+            ],
+        ),
+        expected_failure=True,
+    )
+
     # =========================================================================
     # Phase 7: Quarantined Recovery & Final Balance Proof
     # =========================================================================
@@ -547,7 +587,7 @@ def main() -> None:
         "source_verification": {
             "repository_url": "https://github.com/khezzed/NexusDAG",
             "contract_path": "contracts/nexus_dag.py",
-            "deployed_commit_sha": "2ab459d85bb48a69d84f139945d8f2c0b80218a1",
+            "deployed_commit_sha": "887d8eb70d7ccf724b0b32a59dd8cabb1484e61e",
             "git_blob_sha1": computed_blob_sha1,
             "byte_length": len(raw_bytes),
             "line_endings": "LF",
