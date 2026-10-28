@@ -1,5 +1,5 @@
 import pytest
-from conftest import gl_mock, u256, Address, DynArray, ADMIN_ADDR, RECIPIENT_A, UserError
+from conftest import gl_mock, u256, Address, DynArray, ADMIN_ADDR, RECIPIENT_A, STRANGER_ADDR, UserError
 from contracts.nexus_dag import (
     NexusDag,
     NODE_TYPE_EVIDENCE,
@@ -190,3 +190,72 @@ def test_evaluate_unready_dependency_blocked():
     # PARENT is only STATUS_REGISTERED, not STATUS_ACTIVE
     with pytest.raises(UserError, match="EXPECTED:DEPENDENCIES_NOT_ACTIVE"):
         contract.evaluate_node("CHILD")
+
+
+def test_unauthorized_empty_dependency_derived_node_payout_attempt_blocked():
+    """Steward Review Requirement (1):
+    Untrusted callers cannot register an empty-dependency derived node or allocate/pay funds
+    from the shared treasury without caller-owned deposits.
+    """
+    contract = create_sample_dag()
+    # Admin deposits 500 wei into shared treasury
+    gl_mock.message.sender_address = ADMIN_ADDR
+    gl_mock.message.value = u256(500)
+    contract.deposit_treasury()
+    gl_mock.message.value = u256(0)
+
+    # 1. Even Admin cannot register a derived node with empty dependencies
+    with pytest.raises(UserError, match="EXPECTED:DERIVED_NODE_REQUIRES_DEPENDENCIES"):
+        contract.register_node(
+            node_id="EMPTY-DERIVED-ADMIN",
+            node_type=NODE_TYPE_DERIVED,
+            dependencies=DynArray([]),
+            evidence_url="",
+            required_subject="",
+            allocated_wei=u256(100),
+            recipient=RECIPIENT_A,
+        )
+
+    # 2. Untrusted stranger attempting an empty-dependency derived-node payout is rejected
+    gl_mock.message.sender_address = STRANGER_ADDR
+    with pytest.raises(UserError, match="EXPECTED:DERIVED_NODE_REQUIRES_DEPENDENCIES"):
+        contract.register_node(
+            node_id="EMPTY-DERIVED-ATTACK",
+            node_type=NODE_TYPE_DERIVED,
+            dependencies=DynArray([]),
+            evidence_url="",
+            required_subject="",
+            allocated_wei=u256(500),
+            recipient=STRANGER_ADDR,
+        )
+
+    # 3. Untrusted stranger attempting to allocate funds from shared treasury on a valid parent dependency
+    gl_mock.message.sender_address = ADMIN_ADDR
+    contract.register_node(
+        node_id="VALID-ROOT",
+        node_type=NODE_TYPE_EVIDENCE,
+        dependencies=DynArray([]),
+        evidence_url="https://raw.githubusercontent.com/org/repo/v1.0.0/root.json",
+        required_subject="Root",
+        allocated_wei=u256(0),
+        recipient=ADMIN_ADDR,
+    )
+
+    gl_mock.message.sender_address = STRANGER_ADDR
+    with pytest.raises(UserError, match="EXPECTED:UNAUTHORIZED_TREASURY_ALLOCATION"):
+        contract.register_node(
+            node_id="STRANGER-DRAIN-ATTEMPT",
+            node_type=NODE_TYPE_DERIVED,
+            dependencies=DynArray(["VALID-ROOT"]),
+            evidence_url="",
+            required_subject="",
+            allocated_wei=u256(500),
+            recipient=STRANGER_ADDR,
+        )
+
+    # Verify treasury remains 100% intact (500 wei unallocated, 0 allocated, 0 paid)
+    state = contract.get_accounting_state()
+    assert state["total_treasury_wei"] == 500
+    assert state["total_allocated_wei"] == 0
+    assert state["total_paid_wei"] == 0
+

@@ -349,12 +349,18 @@ def _fetch_and_evaluate_evidence_nondet_fn(
             f"You are evaluating evidence for DAG Node '{node_id}'.\n"
             f"Required Subject/Scope: '{required_subject}'.\n"
             f"Determine if the evidence confirms the assertion holds without unresolved critical defects or disqualifications.\n"
+            f"- Output 'HOLDS' if the assertion is affirmatively verified.\n"
+            f"- Output 'CONTRADICTED' if the evidence refutes or fails the assertion.\n"
+            f"- Output 'UNCLEAR' if ambiguous or unrelated.\n"
         )
     else:
         prompt_task = (
             f"You are evaluating RETRACTION / REVOCATION evidence for DAG Node '{node_id}'.\n"
             f"Required Subject/Scope: '{required_subject}'.\n"
-            f"Determine if the evidence confirms that the previous certification/assertion is formally revoked, retracted, compromised, or contradicted.\n"
+            f"Determine whether the evidence affirmatively proves that the prior certification/assertion is formally revoked, retracted, or compromised:\n"
+            f"- Output 'HOLDS' ONLY if the evidence affirmatively proves that the certification/assertion is revoked, retracted, or compromised.\n"
+            f"- Output 'CONTRADICTED' if the evidence shows the certification remains valid/clean and is NOT retracted.\n"
+            f"- Output 'UNCLEAR' if ambiguous or insufficient.\n"
         )
 
     judge_prompt = f"""{prompt_task}
@@ -419,8 +425,10 @@ Return ONLY a valid JSON object matching this exact schema:
     norm_citation = _normalize_whitespace_fn(citation)
 
     if is_retraction:
-        if predicate in (PREDICATE_HOLDS, PREDICATE_CONTRADICTED):
+        if predicate == PREDICATE_HOLDS:
             code = STATUS_OK_RETRACTION_VERIFIED
+        elif predicate == PREDICATE_CONTRADICTED:
+            code = STATUS_EVIDENCE_CONTRADICTED
         else:
             code = STATUS_LLM_MALFORMED
     else:
@@ -456,6 +464,7 @@ class NexusDag(gl.Contract):
     total_paid_wei: u256
     total_inbound_wei: u256
     total_outbound_wei: u256
+    depositor_balances: TreeMap[Address, u256]
     nodes: TreeMap[str, DagNode]
     node_keys: DynArray[str]
     used_evidence_urls: TreeMap[str, bool]
@@ -489,7 +498,7 @@ class NexusDag(gl.Contract):
         paid = int(self.total_paid_wei)
 
         if inbound < outbound:
-            raise gl.vm.UserError("INVARIANT_VIOLATION:NEGATIVE_NET_INFLOW")
+            raise gl.vm.UserError("INVARIANT_VIIO:NEGATIVE_NET_INFLOW")
         if outbound != paid:
             raise gl.vm.UserError("INVARIANT_VIOLATION:OUTBOUND_MISMATCH")
 
@@ -572,6 +581,9 @@ class NexusDag(gl.Contract):
         val = u256(int(getattr(gl.message, "value", u256(0))))
         if int(val) <= 0:
             raise gl.vm.UserError("EXPECTED:ZERO_DEPOSIT")
+        sender = _to_address(gl.message.sender_address)
+        prev_bal = self.depositor_balances.get(sender, u256(0))
+        self.depositor_balances[sender] = _safe_add_u256(prev_bal, val)
         self.total_treasury_wei = _safe_add_u256(self.total_treasury_wei, val)
         self.total_inbound_wei = _safe_add_u256(self.total_inbound_wei, val)
         self._assert_accounting_invariant()
@@ -600,6 +612,9 @@ class NexusDag(gl.Contract):
         if n_type not in (int(NODE_TYPE_EVIDENCE), int(NODE_TYPE_DERIVED)):
             raise gl.vm.UserError("EXPECTED:INVALID_NODE_TYPE")
 
+        if n_type == int(NODE_TYPE_DERIVED) and len(dependencies) == 0:
+            raise gl.vm.UserError("EXPECTED:DERIVED_NODE_REQUIRES_DEPENDENCIES")
+
         if len(dependencies) > MAX_DEPENDENCIES_PER_NODE:
             raise gl.vm.UserError("EXPECTED:EXCEEDS_MAX_DEPENDENCIES")
 
@@ -614,9 +629,19 @@ class NexusDag(gl.Contract):
         recip_addr = _to_address(recipient)
         alloc = int(allocated_wei)
 
+        # Enforce authorized node/allocation policy AND caller-owned deposit binding:
+        # Only admin or a caller with sufficient caller-owned deposit can allocate funds;
+        # untrusted callers without their own deposited balance cannot allocate from the shared treasury.
+        if sender != self.admin and alloc == 0:
+            raise gl.vm.UserError("EXPECTED:UNAUTHORIZED_NODE_REGISTRATION")
+
         if alloc > 0:
+            caller_dep = int(self.depositor_balances.get(sender, u256(0)))
+            if caller_dep < alloc:
+                raise gl.vm.UserError("EXPECTED:UNAUTHORIZED_TREASURY_ALLOCATION")
             if alloc > int(self.total_treasury_wei):
                 raise gl.vm.UserError("EXPECTED:INSUFFICIENT_TREASURY")
+            self.depositor_balances[sender] = _safe_sub_u256(caller_dep, allocated_wei)
             self.total_treasury_wei = _safe_sub_u256(self.total_treasury_wei, allocated_wei)
             self.total_allocated_wei = _safe_add_u256(self.total_allocated_wei, allocated_wei)
 
@@ -669,8 +694,10 @@ class NexusDag(gl.Contract):
 
         now = self._get_current_timestamp()
 
-        # If purely derived node with no external evidence, activate deterministically
+        # If purely derived node with active upstream dependencies, activate deterministically
         if int(node.node_type) == int(NODE_TYPE_DERIVED):
+            if len(node.dependencies) == 0:
+                raise gl.vm.UserError("EXPECTED:DERIVED_NODE_REQUIRES_DEPENDENCIES")
             node.status = STATUS_ACTIVE
             node.activated_at = now
             self.nodes[norm_id] = node
@@ -731,10 +758,12 @@ class NexusDag(gl.Contract):
             node.activated_at = now
         else:
             node.status = STATUS_REJECTED
-            # If rejected, unreserve allocated wei back to treasury
+            # If rejected, unreserve allocated wei back to creator's deposit and treasury
             if int(node.allocated_wei) > 0:
                 self.total_allocated_wei = _safe_sub_u256(self.total_allocated_wei, node.allocated_wei)
                 self.total_treasury_wei = _safe_add_u256(self.total_treasury_wei, node.allocated_wei)
+                prev_dep = self.depositor_balances.get(node.creator, u256(0))
+                self.depositor_balances[node.creator] = _safe_add_u256(prev_dep, node.allocated_wei)
                 node.allocated_wei = u256(0)
 
         self.nodes[norm_id] = node
@@ -745,8 +774,10 @@ class NexusDag(gl.Contract):
     def retract_node(self, node_id: str, retraction_url: str) -> dict:
         """Core 150-Point Mechanism: Selective Retraction Propagation.
 
-        A verified retraction of upstream node X blocks X and ALL descendants of X,
-        while completely preserving disjoint independent branches.
+        A verified retraction of upstream node X (where agreed predicate == HOLDS)
+        blocks X and ALL descendants of X, while completely preserving disjoint
+        independent branches. If retraction evidence is CONTRADICTED or UNCLEAR,
+        the node and all funds remain unchanged.
         """
         self._assert_non_payable()
         norm_id = node_id.strip()
@@ -812,9 +843,11 @@ class NexusDag(gl.Contract):
             adjudicated_at=u256(int(agreed_env["adjudicated_at"])),
         )
 
-        if agreed_env["predicate"] not in (PREDICATE_HOLDS, PREDICATE_CONTRADICTED):
-            # Retraction evidence failed to substantiate revocation -> state unchanged
+        # Retract ONLY when agreed evidence affirmatively proves retraction (PREDICATE_HOLDS).
+        # A CONTRADICTED or UNCLEAR result leaves the node and funds completely unchanged.
+        if agreed_env["predicate"] != PREDICATE_HOLDS:
             self.nodes[norm_id] = target_node
+            self._assert_accounting_invariant()
             return agreed_env
 
         # 1. Transition target node to RETRACTED
@@ -841,12 +874,16 @@ class NexusDag(gl.Contract):
 
     @gl.public.write
     def execute_node_action(self, node_id: str) -> u256:
-        """Executes operational action/settlement for an active node."""
+        """Executes operational action/settlement for an active node (authorized caller only)."""
         self._assert_non_payable()
         norm_id = node_id.strip()
         if norm_id not in self.nodes:
             raise gl.vm.UserError("EXPECTED:NODE_NOT_FOUND")
         node = self.nodes[norm_id]
+
+        sender = _to_address(gl.message.sender_address)
+        if sender != self.admin and sender != node.creator and sender != node.recipient:
+            raise gl.vm.UserError("EXPECTED:UNAUTHORIZED_EXECUTION")
 
         if node.status == STATUS_CASCADE_BLOCKED:
             raise gl.vm.UserError("EXPECTED:NODE_CASCADE_BLOCKED")
@@ -886,13 +923,12 @@ class NexusDag(gl.Contract):
         if node.status not in (STATUS_RETRACTED, STATUS_CASCADE_BLOCKED):
             raise gl.vm.UserError("EXPECTED:NODE_NOT_QUARANTINED")
 
-        # Quarantined funds are held in total_quarantined_wei
-        # When unfreezing, return to unallocated treasury
-        # Note: allocated_wei on the node was preserved as reference until refunded
         q_amt = node.allocated_wei
         if int(q_amt) > 0:
             self.total_quarantined_wei = _safe_sub_u256(self.total_quarantined_wei, q_amt)
             self.total_treasury_wei = _safe_add_u256(self.total_treasury_wei, q_amt)
+            prev_dep = self.depositor_balances.get(node.creator, u256(0))
+            self.depositor_balances[node.creator] = _safe_add_u256(prev_dep, q_amt)
             node.allocated_wei = u256(0)
             self.nodes[norm_id] = node
 

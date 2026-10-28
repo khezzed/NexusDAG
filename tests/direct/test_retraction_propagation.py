@@ -26,6 +26,8 @@ from contracts.nexus_dag import (
     STATUS_CASCADE_BLOCKED,
     STATUS_EXECUTED,
     PREDICATE_HOLDS,
+    PREDICATE_CONTRADICTED,
+    STATUS_EVIDENCE_CONTRADICTED,
 )
 
 
@@ -208,3 +210,85 @@ def test_selective_retraction_propagation_and_isolation():
     state_refunded = contract.get_accounting_state()
     assert state_refunded["total_quarantined_wei"] == 0
     assert state_refunded["total_treasury_wei"] == 450
+
+
+def test_contradicted_retraction_evidence_leaves_node_and_funds_unchanged():
+    """Steward Review Requirement (2):
+    Retract a node ONLY when the agreed evidence affirmatively proves retraction (HOLDS);
+    a CONTRADICTED result must leave the node and funds completely unchanged.
+    """
+    contract = setup_multi_branch_dag()
+
+    url_a = "https://raw.githubusercontent.com/org/repo/v1.0.0/audit_clean_1.json"
+    url_false_retract = "https://raw.githubusercontent.com/org/repo/v1.0.0/audit_reaffirmation.json"
+
+    body_a = json.dumps({
+        "report_id": "AUDIT-2026-01",
+        "verdict": "Audited smart contracts show zero critical vulnerabilities and pass all invariants.",
+    }).encode("utf-8")
+
+    body_reaffirm = json.dumps({
+        "advisory_id": "AUDIT-REAFFIRM-2026-02",
+        "verdict": "Prior audit certification remains completely valid and is NOT retracted or compromised.",
+    }).encode("utf-8")
+
+    mock_web_responses[url_a] = MockWebResponse(status=200, body=body_a)
+    mock_web_responses[url_false_retract] = MockWebResponse(status=200, body=body_reaffirm)
+
+    contract.register_node(
+        node_id="NODE-A",
+        node_type=NODE_TYPE_EVIDENCE,
+        dependencies=DynArray([]),
+        evidence_url=url_a,
+        required_subject="Smart Contract Security Audit",
+        allocated_wei=u256(0),
+        recipient=ADMIN_ADDR,
+    )
+    contract.register_node(
+        node_id="NODE-B",
+        node_type=NODE_TYPE_DERIVED,
+        dependencies=DynArray(["NODE-A"]),
+        evidence_url="",
+        required_subject="",
+        allocated_wei=u256(100),
+        recipient=RECIPIENT_A,
+    )
+
+    mock_llm_dict["NODE-A"] = lambda prompt: json.dumps(
+        {
+            "predicate": "CONTRADICTED",
+            "citation": "Prior audit certification remains completely valid and is NOT retracted",
+        }
+        if "RETRACTION" in prompt
+        else {
+            "predicate": "HOLDS",
+            "citation": "Audited smart contracts show zero critical vulnerabilities",
+        }
+    )
+
+    # Activate NODE-A and NODE-B
+    contract.evaluate_node("NODE-A")
+    contract.evaluate_node("NODE-B")
+    assert contract.get_node("NODE-A")["status"] == int(STATUS_ACTIVE)
+    assert contract.get_node("NODE-B")["status"] == int(STATUS_ACTIVE)
+
+    # Submit retraction evidence that evaluates to CONTRADICTED
+    res_retract = contract.retract_node("NODE-A", url_false_retract)
+    assert res_retract["predicate"] == PREDICATE_CONTRADICTED
+    assert res_retract["status_code"] == STATUS_EVIDENCE_CONTRADICTED
+
+    # Verify NODE-A and descendant NODE-B remain STATUS_ACTIVE (unchanged)
+    node_a = contract.get_node("NODE-A")
+    assert node_a["status"] == int(STATUS_ACTIVE)
+    assert node_a["retraction_predicate"] == PREDICATE_CONTRADICTED
+
+    node_b = contract.get_node("NODE-B")
+    assert node_b["status"] == int(STATUS_ACTIVE)
+    assert contract.is_node_executable("NODE-B") is True
+
+    # Verify funds remain in allocated pool (not quarantined) and NODE-B can still execute payout
+    acct = contract.get_accounting_state()
+    assert acct["total_allocated_wei"] == 100
+    assert acct["total_quarantined_wei"] == 0
+    assert acct["total_treasury_wei"] == 400
+
